@@ -74,6 +74,41 @@
   .footline{ margin-top:48px; font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:8px; }
   .footline svg{width:14px;height:14px; color:var(--gold);}
 
+  .link-consulta{
+    margin-top:18px; background:none; border:1.5px solid var(--border); border-radius:100px;
+    color:var(--text-dim); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    padding:10px 20px; display:flex; align-items:center; gap:8px;
+  }
+  .link-consulta:hover{ color:var(--gold); border-color:var(--gold); }
+  .link-consulta svg{ width:15px; height:15px; flex-shrink:0; }
+
+  /* ============ Pantalla: consulta de carné QR (sin login) ============ */
+  #screenConsulta{ align-items:center; justify-content:center; padding:32px 16px; }
+  .consulta-card{
+    background:var(--surface); border:1.5px solid var(--border); border-radius:20px;
+    padding:36px 32px; max-width:400px; width:100%;
+    box-shadow:0 40px 90px -20px rgba(0,0,0,0.6);
+    text-align:center; position:relative;
+  }
+  .consulta-back{
+    position:absolute; top:20px; left:20px; background:none; border:none; color:var(--text-faint);
+    font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;
+  }
+  .consulta-back:hover{ color:var(--gold); }
+  .consulta-back svg{ width:14px; height:14px; }
+  .consulta-title{ font-family:'Fraunces',Georgia,serif; font-size:22px; font-weight:600; margin:26px 0 6px; }
+  .consulta-sub{ font-size:13px; color:var(--text-dim); margin:0 0 26px; line-height:1.5; }
+  .consulta-result{ display:none; }
+  .consulta-result.show{ display:block; }
+  #consultaFormWrap.hide{ display:none; }
+  .consulta-result .qr{ background:#fff; padding:12px; border-radius:12px; display:inline-block; margin:20px 0 16px; }
+  .consulta-result .consulta-nombre{ font-family:'Fraunces',Georgia,serif; font-size:19px; font-weight:600; margin-bottom:4px; }
+  .consulta-result .consulta-cedula{ font-size:13px; color:var(--text-faint); font-variant-numeric:tabular-nums; margin-bottom:18px; }
+  .consulta-result .consulta-note{ font-size:12px; color:var(--text-faint); line-height:1.5; }
+  .consulta-otra{ margin-top:18px; background:none; border:none; color:var(--gold); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:underline; }
+  #consultaMsgBox .msg{ font-size:13.5px; margin-top:14px; padding:10px 12px; border-radius:10px; text-align:left; }
+  #consultaMsgBox .msg.err{ background:rgba(244,148,138,0.12); color:#f4948a; border:1px solid rgba(244,148,138,0.3); }
+
   /* ============ Pantalla 2: login ============ */
   #screenLogin{ align-items:center; justify-content:center; padding:32px 16px; }
   .stage{
@@ -668,6 +703,45 @@
   <div class="footline">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 4 9 9 9s9-4 9-9V7l-9-5z"/></svg>
     Control de asistencia a rutinas — acceso restringido
+  </div>
+
+  <button class="link-consulta" id="btnAbrirConsulta">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"/></svg>
+    ¿Eres colaborador? Consulta tu carné QR aquí
+  </button>
+</div>
+
+<!-- ============================================================ -->
+<!-- PANTALLA — Consulta de carné QR (sin login, para colaboradores) -->
+<!-- ============================================================ -->
+<div class="screen" id="screenConsulta" hidden>
+  <div class="consulta-card">
+    <button class="consulta-back" id="btnConsultaVolver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Volver
+    </button>
+
+    <div id="consultaFormWrap">
+      <h1 class="consulta-title">Consulta tu carné</h1>
+      <p class="consulta-sub">Escribe tu número de cédula para ver tu código QR de asistencia. Muéstraselo a tu líder para que lo escanee.</p>
+
+      <div class="modal-field">
+        <label>Número de cédula</label>
+        <input type="text" id="consultaCedulaInput" inputmode="numeric" placeholder="Ej. 1121930497" autocomplete="off">
+      </div>
+
+      <button class="btn-add" id="btnConsultaBuscar" style="width:100%; justify-content:center; padding:13px;">Ver mi código QR</button>
+
+      <div id="consultaMsgBox"></div>
+    </div>
+
+    <div id="consultaResultBox" class="consulta-result">
+      <div class="qr" id="consultaQrDiv"></div>
+      <div class="consulta-nombre" id="consultaResNombre"></div>
+      <div class="consulta-cedula" id="consultaResCedula"></div>
+      <div class="consulta-note">Este código solo sirve para que tu líder marque tu asistencia. No comparte ningún otro dato tuyo.</div>
+      <button class="consulta-otra" id="btnConsultaOtra">Consultar otra cédula</button>
+    </div>
   </div>
 </div>
 
@@ -1503,6 +1577,7 @@
   const screenAdmin = document.getElementById('screenAdmin');
   const screenLeader = document.getElementById('screenLeader');
   const screenAbi = document.getElementById('screenAbi');
+  const screenConsulta = document.getElementById('screenConsulta');
 
   let selectedCD = 'Villavicencio';
   let currentUser = null;
@@ -1535,6 +1610,86 @@
       screenLogin.hidden = false;
     });
   });
+
+  // ---- Pantalla de consulta de carné QR (sin login, para colaboradores) ----
+  // Vive en el mismo index.html que el resto de la app (no un archivo aparte)
+  // para no tener que mantener dos páginas ni dos links: como lee de la misma
+  // Firestore, cualquier alta/baja de colaborador que haga el admin se ve
+  // reflejada aquí de inmediato, sin ningún paso extra.
+  (function initConsultaQr(){
+    const formWrap = document.getElementById('consultaFormWrap');
+    const resultBox = document.getElementById('consultaResultBox');
+    const cedulaInput = document.getElementById('consultaCedulaInput');
+    const btnBuscar = document.getElementById('btnConsultaBuscar');
+    const msgBox = document.getElementById('consultaMsgBox');
+    const qrDiv = document.getElementById('consultaQrDiv');
+    const resNombre = document.getElementById('consultaResNombre');
+    const resCedula = document.getElementById('consultaResCedula');
+
+    function mostrarError(texto){ msgBox.innerHTML = `<div class="msg err">${texto}</div>`; }
+    function limpiarError(){ msgBox.innerHTML = ''; }
+
+    function resetPantalla(){
+      resultBox.classList.remove('show');
+      formWrap.classList.remove('hide');
+      cedulaInput.value = '';
+      limpiarError();
+    }
+
+    async function buscarCedula(){
+      const cedula = cedulaInput.value.trim();
+      if (!cedula){ mostrarError('Escribe tu número de cédula.'); return; }
+      limpiarError();
+      btnBuscar.disabled = true;
+      const textoOriginal = btnBuscar.textContent;
+      btnBuscar.textContent = 'Buscando…';
+
+      try {
+        const snap = await getDoc(doc(colColaboradores, cedula));
+        if (!snap.exists()){
+          mostrarError(`No encontramos ningún colaborador con la cédula ${cedula}. Verifica que esté bien escrita, o consulta con tu líder si tu registro ya está cargado.`);
+          return;
+        }
+        const data = snap.data();
+        if (data.activo === false){
+          mostrarError('Este colaborador figura como inactivo en el sistema. Consulta con tu líder o con el administrador.');
+          return;
+        }
+
+        // El QR codifica ÚNICAMENTE la cédula, en texto plano — igual que los
+        // carnés impresos y que el resto del sistema, para que el mismo
+        // escáner del portal de líder funcione sin distinción entre carné
+        // físico y este QR mostrado en pantalla.
+        resNombre.textContent = data.nombre || '';
+        resCedula.textContent = 'C.C. ' + cedula;
+        qrDiv.innerHTML = '';
+        new QRCode(qrDiv, { text: cedula, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+
+        formWrap.classList.add('hide');
+        resultBox.classList.add('show');
+      } catch (err){
+        console.error('Error consultando colaborador:', err);
+        mostrarError('No se pudo conectar con la base de datos en este momento. Intenta de nuevo en unos segundos.');
+      } finally {
+        btnBuscar.disabled = false;
+        btnBuscar.textContent = textoOriginal;
+      }
+    }
+
+    document.getElementById('btnAbrirConsulta').addEventListener('click', () => {
+      resetPantalla();
+      screenSelect.hidden = true;
+      screenConsulta.hidden = false;
+      cedulaInput.focus();
+    });
+    document.getElementById('btnConsultaVolver').addEventListener('click', () => {
+      screenConsulta.hidden = true;
+      screenSelect.hidden = false;
+    });
+    btnBuscar.addEventListener('click', buscarCedula);
+    cedulaInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarCedula(); });
+    document.getElementById('btnConsultaOtra').addEventListener('click', resetPantalla);
+  })();
 
   document.getElementById('backToSelect').addEventListener('click', () => {
     screenLogin.hidden = true;

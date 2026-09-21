@@ -1,4 +1,5 @@
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adherencia Rutinas</title>
 <style>
   :root{
@@ -231,7 +232,7 @@
   .mini-av:first-child{margin-left:0;}
   .mini-av.more{ background:var(--gold); color:#0a0604; }
 
-  .table-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .table-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table{ width:100%; border-collapse:collapse; font-size:13.5px; }
   thead th{
     text-align:left; padding:13px 16px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
@@ -569,6 +570,58 @@
   .survey-yn button.no.active{border-color:#f4948a; background:rgba(244,148,138,0.12); color:#f4948a;}
   .survey-score-bar{display:flex; align-items:center; justify-content:space-between; background:var(--surface-2); border:1.5px solid var(--border); border-radius:14px; padding:14px 18px; margin-bottom:16px;}
   .survey-score-bar .n{font-family:'Fraunces',serif; font-size:30px; font-weight:600; color:var(--gold-2);}
+
+  /* ===================================================================
+     AJUSTES PARA CELULAR — la app se usa mucho desde el teléfono (líderes
+     marcando asistencia, escaneando QR). Sin esto, todo se veía a tamaño
+     de escritorio reducido y había que hacer zoom para leer o tocar botones.
+     =================================================================== */
+  @media (max-width:640px){
+    /* Menos aire a los lados: en un celular ese padding de escritorio se
+       come casi un tercio del ancho útil de la pantalla. */
+    .admin-body, .leader-body{ padding:16px; }
+    .topbar{ padding:12px 16px; gap:10px; }
+    .topbar-title{ font-size:15px; }
+    .admin-tabs{ padding:0 16px; }
+
+    /* Las tarjetas KPI de 4 en fila (o 2 en fila en tablet) quedan muy
+       apretadas en un teléfono angosto — mejor una debajo de otra. */
+    .kpi-row{ grid-template-columns:1fr; gap:10px; }
+    .kpi-card{ padding:14px 16px; }
+    .kpi-card .k-value{ font-size:24px; }
+
+    /* Los filtros de búsqueda con ancho fijo (220px) se salían de pantalla
+       o dejaban poco espacio a los botones de al lado; que ocupen el ancho
+       completo, uno debajo del otro. */
+    .section-head{ flex-direction:column; align-items:stretch; }
+    .filters{ flex-direction:column; align-items:stretch; }
+    .filters .input-wrap{ width:100%; }
+    .filters select, .filters input, .chip-select{ width:100%; }
+    .btn-add{ justify-content:center; }
+
+    /* Formularios de dos columnas (ej. modal de usuarios/colaboradores)
+       apretujaban demasiado los campos en pantallas angostas. */
+    .modal-row2{ grid-template-columns:1fr; }
+    .modal-box{ padding:20px; border-radius:14px; }
+
+    /* Las pestañas de rutina del portal de líder y las tarjetas de sesión
+       se veían muy anchas y con texto cortado; que se apilen. */
+    .turno-grid{ grid-template-columns:1fr !important; }
+    .adh-summary, .adhp-summary{ grid-template-columns:1fr !important; }
+    .abi-summary{ grid-template-columns:1fr !important; }
+
+    /* Tablas: en vez de recortarlas o achicar la letra hasta ser ilegible,
+       que se puedan deslizar horizontalmente con el dedo. */
+    table{ font-size:12.5px; }
+    table th, table td{ white-space:nowrap; }
+  }
+
+  @media (max-width:400px){
+    /* Teléfonos angostos (iPhone SE y similares): un empujón más. */
+    .admin-body, .leader-body{ padding:12px; }
+    .form-panel{ padding:28px 20px !important; }
+    .form-title{ font-size:22px; }
+  }
 </style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1457,9 +1510,19 @@
   let adminUserBeforeMarking = null; // guarda el usuario admin real para poder volver al panel
 
   // ---- Conteos en pantalla de selección ----
+  // Antes esto se calculaba una sola vez al cargar el script, ANTES de que
+  // onSnapshot trajera los colaboradores reales desde Firestore (llegan de
+  // forma asíncrona un instante después), por eso siempre mostraba "0
+  // colaboradores" aunque los datos sí estuvieran ahí. Ahora se recalcula
+  // cada vez que PEOPLE cambia, usando el mismo mecanismo de refresco en
+  // vivo que ya usan las demás pantallas.
+  function actualizarConteosCD(){
+    document.getElementById('countVVC').textContent = countByCD('Villavicencio') + ' colaboradores';
+    document.getElementById('countYOP').textContent = countByCD('Yopal') + ' colaboradores';
+  }
   function countByCD(cd){ return PEOPLE.filter(p => p.cd === cd).length; }
-  document.getElementById('countVVC').textContent = countByCD('Villavicencio') + ' colaboradores';
-  document.getElementById('countYOP').textContent = countByCD('Yopal') + ' colaboradores';
+  actualizarConteosCD();
+  liveRefreshCallbacks.people.push(actualizarConteosCD);
 
   document.querySelectorAll('.cd-card').forEach(card => {
     card.addEventListener('click', () => {

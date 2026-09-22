@@ -2339,7 +2339,10 @@
         payload.abiAuditor = true;
       } else {
         payload.rutinas = rutinasSel;
-        payload.usaTurnos = existing ? existing.usaTurnos : rutinasSel.includes('Cambio de turno');
+        // Firestore rechaza campos con valor undefined: si el usuario existente
+        // nunca tuvo este campo (usuarios creados antes de esta función),
+        // se usa un valor por defecto en lugar de arrastrar el undefined.
+        payload.usaTurnos = existing && existing.usaTurnos !== undefined ? existing.usaTurnos : rutinasSel.includes('Cambio de turno');
         payload.tambienAbi = document.getElementById('uTambienAbi').checked;
       }
 

@@ -1152,6 +1152,9 @@
         <div class="av" id="leaderAvatar">CM</div>
         <div><b id="leaderName">Catalina Mancilla</b><span id="leaderRole">Supervisor</span></div>
       </div>
+      <button class="btn-icon" id="btnLeaderAbi" title="Encuesta ABI" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
       <button class="btn-icon" id="logoutBtnLeader" title="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
@@ -1246,6 +1249,9 @@
         <div class="av" id="abiAvatar">VA</div>
         <div><b id="abiName">Victor Anaya</b><span>Auditor ABI</span></div>
       </div>
+      <button class="btn-icon" id="btnAbiVolverLider" title="Volver a marcar asistencia" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
       <button class="btn-icon" id="logoutBtnAbi" title="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
@@ -1583,6 +1589,8 @@
   let currentUser = null;
   let adminMarkingMode = false; // true cuando el usuario maestro está "actuando como líder" desde Marcar asistencia
   let adminUserBeforeMarking = null; // guarda el usuario admin real para poder volver al panel
+  let leaderAbiMode = false; // true cuando un líder con "tambienAbi" entró a la Encuesta ABI desde su propio portal
+  let leaderAbiUserBefore = null; // guarda el usuario líder para poder volver a su portal de asistencia
 
   // ---- Conteos en pantalla de selección ----
   // Antes esto se calculaba una sola vez al cargar el script, ANTES de que
@@ -1727,13 +1735,19 @@
         screenAbi.hidden = false;
         initAbiPortal(found);
       } else {
-        document.getElementById('leaderName').textContent = found.name;
-        document.getElementById('leaderRole').textContent = found.role;
-        document.getElementById('leaderAvatar').textContent = found.initials;
+        // Un líder asignado a "Ambos" CD no tiene un CD fijo en Firestore:
+        // se resuelve al CD que la persona eligió en la pantalla inicial,
+        // igual que ya hacen admin/auditor ABI/visor de reportes. Se hace
+        // una copia superficial para no mutar el objeto `found` (sincronizado
+        // en vivo con Firestore vía USERS).
+        currentUser = (found.cd === 'Ambos') ? { ...found, cd: selectedCD } : found;
+        document.getElementById('leaderName').textContent = currentUser.name;
+        document.getElementById('leaderRole').textContent = currentUser.role;
+        document.getElementById('leaderAvatar').textContent = currentUser.initials;
         document.getElementById('leaderCdTag').textContent = 'CD ' + selectedCD;
         screenLogin.hidden = true;
         screenLeader.hidden = false;
-        initLeaderPortal(found);
+        initLeaderPortal(currentUser);
       }
     } else {
       err.classList.add('show');
@@ -1767,6 +1781,33 @@
     screenAbi.hidden = true;
     screenSelect.hidden = false;
     document.getElementById('loginForm').reset();
+    leaderAbiMode = false;
+    leaderAbiUserBefore = null;
+    document.getElementById('btnAbiVolverLider').hidden = true;
+  });
+
+  // Un líder con "También hace Encuesta ABI" entra aquí a la misma pantalla
+  // de auditoría ABI que usa el auditor independiente, sin cerrar su sesión.
+  document.getElementById('btnLeaderAbi').addEventListener('click', () => {
+    if (!currentUser) return;
+    leaderAbiUserBefore = currentUser;
+    leaderAbiMode = true;
+    document.getElementById('abiName').textContent = currentUser.name;
+    document.getElementById('abiAvatar').textContent = currentUser.initials;
+    document.getElementById('abiCdTag').textContent = 'CD ' + selectedCD;
+    document.getElementById('btnAbiVolverLider').hidden = false;
+    screenLeader.hidden = true;
+    screenAbi.hidden = false;
+    initAbiPortal(currentUser);
+  });
+
+  document.getElementById('btnAbiVolverLider').addEventListener('click', () => {
+    screenAbi.hidden = true;
+    leaderAbiMode = false;
+    currentUser = leaderAbiUserBefore;
+    leaderAbiUserBefore = null;
+    document.getElementById('btnAbiVolverLider').hidden = true;
+    screenLeader.hidden = false;
   });
 
   // ================= Admin dashboard logic =================
@@ -2161,8 +2202,8 @@
         <td><div class="cell-name"><div class="cell-av">${u.initials}</div><div><b>${u.name}</b>${u.admin ? '<span class="rutina-chip" style="border-color:var(--gold); color:var(--gold); margin-left:6px;">Usuario maestro</span>' : ''}</div></div></td>
         <td>${username}</td>
         <td>${u.role}</td>
-        <td>${u.cd ? `<span class="pill">${u.cd === 'Villavicencio' ? 'VVC' : 'YOP'}</span>` : '<span class="pill gold">Ambos CDs</span>'}</td>
-        <td>${u.admin ? '<span class="pill gold">Todas</span>' : (u.abiAuditor ? '<span class="pill gold">Cualquiera (ABI)</span>' : (u.rutinas||[]).map(r => `<span class="rutina-chip">${r}</span>`).join(''))}</td>
+        <td>${(!u.cd || u.cd === 'Ambos') ? '<span class="pill gold">Ambos CDs</span>' : `<span class="pill">${u.cd === 'Villavicencio' ? 'VVC' : 'YOP'}</span>`}</td>
+        <td>${u.admin ? '<span class="pill gold">Todas</span>' : (u.abiAuditor ? '<span class="pill gold">Cualquiera (ABI)</span>' : (u.rutinas||[]).map(r => `<span class="rutina-chip">${r}</span>`).join('')) }${u.tambienAbi ? ' <span class="rutina-chip" style="border-color:var(--gold); color:var(--gold);">+ Encuesta ABI</span>' : ''}</td>
         <td><span class="pass-mono">${u.pass}</span></td>
         <td>
           <div class="row-actions">
@@ -2214,7 +2255,7 @@
       </div>
       <div class="modal-row2">
         <div class="modal-field"><label>Rol / cargo (texto libre)</label><input type="text" id="uRole" value="${existing ? existing.role : 'Supervisor'}"></div>
-        <div class="modal-field" id="uCdWrap"><label>CD</label><select id="uCd">${ALL_CDS.map(c=>`<option ${existing && existing.cd===c?'selected':''}>${c}</option>`).join('')}</select></div>
+        <div class="modal-field" id="uCdWrap"><label>CD</label><select id="uCd">${ALL_CDS.map(c=>`<option ${existing && existing.cd===c?'selected':''}>${c}</option>`).join('')}<option value="Ambos" ${existing && existing.cd==='Ambos'?'selected':''}>Ambos CD</option></select></div>
       </div>
       <div class="modal-field">
         <label class="check-chip ${isAdmin ? 'checked' : ''}" style="display:inline-flex; margin-bottom:10px;">
@@ -2233,6 +2274,11 @@
           ${ALL_RUTINAS.map(r => `<label class="check-chip ${existing && (existing.rutinas||[]).includes(r) ? 'checked' : ''}"><input type="checkbox" value="${r}" ${existing && (existing.rutinas||[]).includes(r) ? 'checked' : ''}>${r}</label>`).join('')}
         </div>
       </div>
+      <div class="modal-field" id="uTambienAbiWrap">
+        <label class="check-chip ${existing && existing.tambienAbi ? 'checked' : ''}" style="display:inline-flex;">
+          <input type="checkbox" id="uTambienAbi" ${existing && existing.tambienAbi ? 'checked' : ''}> También hace Encuesta ABI (además de sus rutinas)
+        </label>
+      </div>
       <div class="modal-actions">
         <button class="btn-secondary" id="uCancel">Cancelar</button>
         <button class="btn-primary" id="uSave" style="box-shadow:none;">Guardar</button>
@@ -2249,6 +2295,10 @@
       const reportOnly = document.getElementById('uIsReportOnly').checked;
       document.getElementById('uRutinasWrap').style.display = (admin || abi || reportOnly) ? 'none' : '';
       document.getElementById('uCdWrap').style.display = (admin || reportOnly) ? 'none' : '';
+      // La casilla "También hace Encuesta ABI" solo aplica a líderes normales:
+      // un admin ya ve todo, un auditor ABI ya hace la encuesta, y un visor de
+      // reportes no marca nada — para esos casos se oculta.
+      document.getElementById('uTambienAbiWrap').style.display = (admin || abi || reportOnly) ? 'none' : '';
     }
     document.getElementById('uIsAdmin').addEventListener('change', syncFieldsVisibility);
     document.getElementById('uIsAbi').addEventListener('change', syncFieldsVisibility);
@@ -2290,6 +2340,7 @@
       } else {
         payload.rutinas = rutinasSel;
         payload.usaTurnos = existing ? existing.usaTurnos : rutinasSel.includes('Cambio de turno');
+        payload.tambienAbi = document.getElementById('uTambienAbi').checked;
       }
 
       const saveBtn = document.getElementById('uSave');
@@ -2751,6 +2802,9 @@
   });
 
   function initLeaderPortal(user){
+    // Botón "Encuesta ABI" en el portal de líder: solo visible para líderes
+    // con tambienAbi=true (no aplica al modo "marcar asistencia" del admin).
+    document.getElementById('btnLeaderAbi').hidden = !user.tambienAbi;
     const row = document.getElementById('leaderRutinaRow');
     row.innerHTML = '';
     user.rutinas.forEach((r, idx) => {

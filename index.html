@@ -2681,28 +2681,23 @@
     return '﻿' + lines.join('\r\n'); // BOM para que Excel detecte UTF-8 correctamente
   }
 
-  // La descarga real de archivos la media la plataforma (capability "downloads"):
-  // el frame nunca descarga directo, así que pedimos el namespace una vez y lo
-  // reutilizamos. Si el visor no soporta la capability, se avisa en vez de fallar.
-  let downloadsNS = null;
-  (async () => {
+  // Descarga estándar del navegador (Blob + enlace temporal con "download"):
+  // funciona igual en GitHub Pages, en localhost o en cualquier sitio normal,
+  // sin depender de ninguna API especial de la plataforma.
+  function downloadCsv(filename, content){
     try {
-      if (window.claude && typeof window.claude.use === 'function'){
-        downloadsNS = await window.claude.use('downloads');
-      }
-    } catch (e) { downloadsNS = null; }
-  })();
-
-  async function downloadCsv(filename, content){
-    if (!downloadsNS){
-      alert('La descarga de archivos no está disponible en esta vista. Prueba abrir este artefacto directamente en claude.ai (no dentro de otra página) e inténtalo de nuevo.');
-      return;
-    }
-    try {
-      await downloadsNS.save({ filename, data: new Blob([content], { type: 'text/csv;charset=utf-8;' }) });
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
-      if (err && err.code === 'declined') return; // el usuario canceló el diálogo, no es un error
-      alert('No se pudo guardar el archivo (' + (err && err.code ? err.code : 'error desconocido') + '). Intenta de nuevo.');
+      console.error('No se pudo generar la descarga:', err);
+      alert('No se pudo guardar el archivo. Intenta de nuevo.');
     }
   }
 

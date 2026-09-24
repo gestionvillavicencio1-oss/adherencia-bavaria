@@ -839,6 +839,9 @@
         <div class="av" id="adminAvatar">DP</div>
         <div><b id="adminName">Daniel Padilla</b><span>Usuario maestro</span></div>
       </div>
+      <button class="btn-icon" id="btnAdminMisRutinas" title="Marcar mis rutinas" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
       <button class="btn-icon" id="logoutBtn" title="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
@@ -1050,6 +1053,12 @@
           <option value="Rutina">Rutina</option>
         </select>
         <select id="adhCargo"><option value="">Todos los cargos</option></select>
+        <select id="adhTurno">
+          <option value="">Todos los turnos</option>
+          <option value="A">Turno A</option>
+          <option value="B">Turno B</option>
+          <option value="C">Turno C</option>
+        </select>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
           <input type="text" id="adhFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
         </label>
@@ -1204,27 +1213,6 @@
       </div>
     </div>
 
-    <div class="section-head">
-      <div class="section-title">Registro de asistencia</div>
-      <div class="filters">
-        <div class="input-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="search" id="searchLeader" placeholder="Buscar por cédula o nombre…">
-        </div>
-      </div>
-    </div>
-
-    <div class="attend-table">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Colaborador</th><th>Cédula</th><th>Cargo</th><th style="text-align:right;">Marcar</th></tr>
-          </thead>
-          <tbody id="leaderBody"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="photo-bar">
       <div class="photo-bar-text">
         <b>Evidencia fotográfica de la rutina</b>
@@ -1276,6 +1264,9 @@
         <div class="av" id="abiAvatar">VA</div>
         <div><b id="abiName">Victor Anaya</b><span>Auditor ABI</span></div>
       </div>
+      <button class="btn-icon" id="btnAbiMisRutinas" title="Marcar mis rutinas" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
       <button class="btn-icon" id="btnAbiVolverLider" title="Volver a marcar asistencia" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
@@ -1618,6 +1609,8 @@
   let adminUserBeforeMarking = null; // guarda el usuario admin real para poder volver al panel
   let leaderAbiMode = false; // true cuando un líder con "tambienAbi" entró a la Encuesta ABI desde su propio portal
   let leaderAbiUserBefore = null; // guarda el usuario líder para poder volver a su portal de asistencia
+  let abiMarkingMode = false; // true cuando un auditor ABI (con rutinas propias asignadas) entró a marcar sus rutinas
+  let abiUserBeforeMarking = null; // guarda el usuario auditor ABI para poder volver a su portal de auditoría
 
   // ---- Conteos en pantalla de selección ----
   // Antes esto se calculaba una sola vez al cargar el script, ANTES de que
@@ -1753,13 +1746,22 @@
         document.getElementById('adminCdTag').textContent = 'CD ' + selectedCD;
         screenLogin.hidden = true;
         screenAdmin.hidden = false;
-        renderAdmin(!!found.reportOnly);
+        // Si además de admin/reportOnly la persona ya tiene rutinas propias
+        // asignadas (poderes combinados, ya no excluyentes), se le habilita el
+        // botón "Marcar mis rutinas" para entrar a su portal de líder sin cerrar sesión.
+        // "admin" siempre manda: si por error quedó también marcado "reportOnly",
+        // el usuario maestro conserva acceso total (no se le restringe la vista).
+        document.getElementById('btnAdminMisRutinas').hidden = !(found.rutinas && found.rutinas.length);
+        renderAdmin(!!(found.reportOnly && !found.admin));
       } else if (found.abiAuditor) {
         document.getElementById('abiName').textContent = found.name;
         document.getElementById('abiAvatar').textContent = found.initials;
         document.getElementById('abiCdTag').textContent = 'CD ' + selectedCD;
         screenLogin.hidden = true;
         screenAbi.hidden = false;
+        // Igual que arriba: un auditor ABI que también tiene rutinas propias
+        // asignadas puede entrar a marcarlas sin dejar de ser auditor ABI.
+        document.getElementById('btnAbiMisRutinas').hidden = !(found.rutinas && found.rutinas.length);
         initAbiPortal(found);
       } else {
         // Un líder asignado a "Ambos" CD no tiene un CD fijo en Firestore:
@@ -1792,12 +1794,20 @@
     if (typeof cerrarEscanerQr === 'function') cerrarEscanerQr();
     screenLeader.hidden = true;
     if (adminMarkingMode) {
-      // El usuario maestro estaba marcando asistencia "como líder": volver al panel admin, no cerrar sesión.
+      // El usuario maestro (o visor de reportes) estaba marcando asistencia
+      // "como líder": volver al panel admin, no cerrar sesión.
       adminMarkingMode = false;
       currentUser = adminUserBeforeMarking;
       adminUserBeforeMarking = null;
       screenAdmin.hidden = false;
-      renderAdmin(!!(currentUser && currentUser.reportOnly));
+      renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin));
+    } else if (abiMarkingMode) {
+      // El auditor ABI estaba marcando sus propias rutinas asignadas: volver
+      // a su portal de auditoría, no cerrar sesión.
+      abiMarkingMode = false;
+      currentUser = abiUserBeforeMarking;
+      abiUserBeforeMarking = null;
+      screenAbi.hidden = false;
     } else {
       screenSelect.hidden = false;
       document.getElementById('loginForm').reset();
@@ -2316,21 +2326,12 @@
       chip.addEventListener('click', () => setTimeout(() => chip.classList.toggle('checked', chip.querySelector('input').checked), 0));
     });
 
-    function syncFieldsVisibility(){
-      const admin = document.getElementById('uIsAdmin').checked;
-      const abi = document.getElementById('uIsAbi').checked;
-      const reportOnly = document.getElementById('uIsReportOnly').checked;
-      document.getElementById('uRutinasWrap').style.display = (admin || abi || reportOnly) ? 'none' : '';
-      document.getElementById('uCdWrap').style.display = (admin || reportOnly) ? 'none' : '';
-      // La casilla "También hace Encuesta ABI" solo aplica a líderes normales:
-      // un admin ya ve todo, un auditor ABI ya hace la encuesta, y un visor de
-      // reportes no marca nada — para esos casos se oculta.
-      document.getElementById('uTambienAbiWrap').style.display = (admin || abi || reportOnly) ? 'none' : '';
-    }
-    document.getElementById('uIsAdmin').addEventListener('change', syncFieldsVisibility);
-    document.getElementById('uIsAbi').addEventListener('change', syncFieldsVisibility);
-    document.getElementById('uIsReportOnly').addEventListener('change', syncFieldsVisibility);
-    syncFieldsVisibility();
+    // Los tres poderes (usuario maestro / auditor ABI / visor de reportes) y las
+    // "Rutinas habilitadas" ya NO son excluyentes entre sí: una misma persona puede,
+    // por ejemplo, ser visor de reportes Y también tener rutinas asignadas para
+    // marcar asistencia, o ser auditor ABI Y también líder de una rutina. Por eso
+    // "Rutinas habilitadas", el CD y "También hace Encuesta ABI" quedan siempre
+    // visibles y editables, sin importar qué combinación de casillas esté marcada.
 
     modal.hidden = false;
     document.getElementById('uCancel').onclick = () => modal.hidden = true;
@@ -2352,26 +2353,25 @@
 
       // NOTA DE SEGURIDAD: pass se guarda en texto plano en Firestore, igual
       // que en el prototipo original. Ver comentario junto a USERS_SEED arriba.
+      // Los tres poderes (admin / abiAuditor / reportOnly) y las rutinas
+      // habilitadas se guardan de forma INDEPENDIENTE y combinable: cualquier
+      // combinación es válida (ej. visor de reportes que también marca sus
+      // propias rutinas, o auditor ABI que también lidera una rutina).
       const payload = {
         pass, name,
         role: document.getElementById('uRole').value.trim(),
-        cd: (admin || reportOnly) ? null : document.getElementById('uCd').value,
+        cd: document.getElementById('uCd').value,
         initials: existing ? existing.initials : initialsGen,
-      };
-      if (admin){
-        payload.admin = true;
-      } else if (reportOnly){
-        payload.reportOnly = true;
-      } else if (abi){
-        payload.abiAuditor = true;
-      } else {
-        payload.rutinas = rutinasSel;
+        rutinas: rutinasSel,
         // Firestore rechaza campos con valor undefined: si el usuario existente
         // nunca tuvo este campo (usuarios creados antes de esta función),
         // se usa un valor por defecto en lugar de arrastrar el undefined.
-        payload.usaTurnos = existing && existing.usaTurnos !== undefined ? existing.usaTurnos : rutinasSel.includes('Cambio de turno');
-        payload.tambienAbi = document.getElementById('uTambienAbi').checked;
-      }
+        usaTurnos: existing && existing.usaTurnos !== undefined ? existing.usaTurnos : rutinasSel.includes('Cambio de turno'),
+        tambienAbi: document.getElementById('uTambienAbi').checked,
+      };
+      if (admin) payload.admin = true;
+      if (abi) payload.abiAuditor = true;
+      if (reportOnly) payload.reportOnly = true;
 
       const saveBtn = document.getElementById('uSave');
       saveBtn.disabled = true;
@@ -2463,7 +2463,7 @@
     grupoSel.innerHTML = '<option value="">Todos los grupos</option>' + ALL_GRUPOS.map(g => `<option value="${g}">${g}</option>`).join('');
     const cargos = [...new Set(people.map(p => p.cargo).filter(Boolean))].sort();
     cargoSel.innerHTML = '<option value="">Todos los cargos</option>' + cargos.map(c => `<option value="${c}">${c}</option>`).join('');
-    [rutinaSel, grupoSel, cargoSel, document.getElementById('adhTipo')].forEach(sel => {
+    [rutinaSel, grupoSel, cargoSel, document.getElementById('adhTipo'), document.getElementById('adhTurno')].forEach(sel => {
       sel.addEventListener('change', renderAdherencia);
     });
     document.getElementById('adhFechaDesde').addEventListener('change', renderAdherencia);
@@ -2482,33 +2482,60 @@
     return true;
   }
 
+  // Cruza un registro (designación o asistencia) con PEOPLE para saber su turno
+  // actual (A/B/C). Si la persona ya no está en PEOPLE (se retiró, por ejemplo),
+  // cae a '' (sin turno) y solo se verá si el filtro está en "Todos los turnos".
+  function turnoDePersona(personId){
+    const p = PEOPLE.find(x => x.id === personId);
+    return p ? (p.turno || '') : '';
+  }
+
   function renderAdherencia(){
     fillAdherenciaFilters();
     const fRutina = document.getElementById('adhRutina').value;
     const fGrupo = document.getElementById('adhGrupo').value;
     const fTipo = document.getElementById('adhTipo').value;
     const fCargo = document.getElementById('adhCargo').value;
+    const fTurno = document.getElementById('adhTurno') ? document.getElementById('adhTurno').value : '';
     const fDesde = document.getElementById('adhFechaDesde').value.trim();
     const fHasta = document.getElementById('adhFechaHasta').value.trim();
 
-    // Datos reales: designados (DESIGNATION_LOG) vs. asistió (ATTENDANCE_LOG), acotados
-    // al CD, y opcionalmente a un rango de fechas y a rutina/grupo/tipo/cargo.
+    // Datos reales: designados (DESIGNATION_LOG) y asistió (ATTENDANCE_LOG), acotados
+    // al CD, y opcionalmente a un rango de fechas y a rutina/grupo/tipo/cargo/turno.
+    // IMPORTANTE: no todo lo que se asiste queda primero "designado" (por ejemplo si el
+    // líder abrió la rutina en otro turno, o si el registro de designados no alcanzó a
+    // guardarse), así que el resumen se arma con la UNIÓN de ambos registros: toda
+    // sesión (rutina+fecha+persona) que aparezca en designados O en asistencias cuenta,
+    // para que ninguna asistencia real quede oculta.
+    const pasaFiltrosBase = (rutina, grupo, cargo, personId) =>
+      (!fRutina || rutina === fRutina) &&
+      (!fGrupo || grupo === fGrupo) &&
+      (!fTipo || tipoDeRutina(rutina) === fTipo) &&
+      (!fCargo || cargo === fCargo) &&
+      (!fTurno || turnoDePersona(personId) === fTurno);
+
     const desig = DESIGNATION_LOG.filter(d =>
       d.cd === selectedCD &&
-      (!fRutina || d.rutina === fRutina) &&
-      (!fGrupo || d.grupo === fGrupo) &&
-      (!fTipo || tipoDeRutina(d.rutina) === fTipo) &&
-      (!fCargo || d.cargo === fCargo) &&
+      pasaFiltrosBase(d.rutina, d.grupo, d.cargo, d.personId) &&
       fechaEnRango(d.fecha, fDesde, fHasta)
     );
-    const asisKeySet = new Set(
-      ATTENDANCE_LOG.filter(a => a.cd === selectedCD).map(a => a.personId + '|' + a.rutina + '|' + a.fecha)
+    const asis = ATTENDANCE_LOG.filter(a =>
+      a.cd === selectedCD &&
+      pasaFiltrosBase(a.rutina, a.grupo, a.cargo, a.personId) &&
+      fechaEnRango(a.fecha, fDesde, fHasta)
     );
 
-    const rows = desig.map(d => ({
-      rutina: d.rutina,
-      asistio: asisKeySet.has(d.personId + '|' + d.rutina + '|' + d.fecha),
-    }));
+    const asisKeySet = new Set(asis.map(a => a.personId + '|' + a.rutina + '|' + a.fecha));
+    const sesiones = new Map(); // key -> { rutina, asistio }
+    desig.forEach(d => {
+      const key = d.personId + '|' + d.rutina + '|' + d.fecha;
+      sesiones.set(key, { rutina: d.rutina, asistio: asisKeySet.has(key) });
+    });
+    asis.forEach(a => {
+      const key = a.personId + '|' + a.rutina + '|' + a.fecha;
+      if (!sesiones.has(key)) sesiones.set(key, { rutina: a.rutina, asistio: true });
+    });
+    const rows = [...sesiones.values()];
 
     const totalDesignado = rows.length;
     const totalAsistio = rows.filter(r => r.asistio).length;
@@ -2523,15 +2550,15 @@
     `;
 
     if (rows.length === 0){
-      document.getElementById('adhBars').innerHTML = '<div class="empty-state">No hay sesiones registradas para esta combinación de filtros. Recuerda que aquí solo aparecen los días en que un líder realmente abrió/marcó la rutina.</div>';
-      renderAttendanceLog(fDesde, fHasta);
+      document.getElementById('adhBars').innerHTML = '<div class="empty-state">No hay sesiones registradas para esta combinación de filtros. Recuerda que aquí solo aparecen los días en que un líder realmente abrió/marcó la rutina, o en que alguien escaneó su QR.</div>';
+      renderAttendanceLog(fDesde, fHasta, fTurno);
       return;
     }
 
     const byRutina = rutinasEnJuego.map(r => {
       const rr = rows.filter(x => x.rutina === r);
-      const asis = rr.filter(x => x.asistio).length;
-      return { rutina: r, designados: rr.length, asistio: asis, pct: rr.length ? Math.round((asis / rr.length) * 100) : 0 };
+      const asisN = rr.filter(x => x.asistio).length;
+      return { rutina: r, designados: rr.length, asistio: asisN, pct: rr.length ? Math.round((asisN / rr.length) * 100) : 0 };
     }).sort((a, b) => b.designados - a.designados);
 
     document.getElementById('adhBars').innerHTML = byRutina.map(b => `
@@ -2543,16 +2570,17 @@
       </div>
     `).join('');
 
-    renderAttendanceLog(fDesde, fHasta);
+    renderAttendanceLog(fDesde, fHasta, fTurno);
   }
 
-  function renderAttendanceLog(fDesde, fHasta){
+  function renderAttendanceLog(fDesde, fHasta, fTurno){
     const tbody = document.getElementById('adhLogBody');
     if (!tbody) return;
     fDesde = fDesde || '';
     fHasta = fHasta || '';
+    fTurno = fTurno || '';
     const log = ATTENDANCE_LOG
-      .filter(r => r.cd === selectedCD && fechaEnRango(r.fecha, fDesde, fHasta))
+      .filter(r => r.cd === selectedCD && fechaEnRango(r.fecha, fDesde, fHasta) && (!fTurno || turnoDePersona(r.personId) === fTurno))
       .sort((a, b) => (b.fecha + b.time).localeCompare(a.fecha + a.time));
     if (log.length === 0){
       tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">Aún no se ha marcado ninguna asistencia en este CD para este rango de fechas.</div></td></tr>';
@@ -2821,7 +2849,6 @@
     btn.addEventListener('click', () => {
       leaderState.turno = btn.dataset.turno;
       document.querySelectorAll('.turno-switch-btn').forEach(b => b.classList.toggle('active', b === btn));
-      renderLeaderTable(currentUser.cd, document.getElementById('searchLeader').value);
       updateLeaderStats(currentUser.cd);
     });
   });
@@ -2871,6 +2898,44 @@
   }
   document.getElementById('btnAbrirMarcarAsistencia').addEventListener('click', abrirMarcarAsistenciaAdmin);
 
+  // "Marcar mis rutinas": ahora que los poderes (admin/reportOnly/auditor ABI)
+  // y las rutinas habilitadas ya no son excluyentes, una persona con, por
+  // ejemplo, "visor de reportes" + rutinas propias asignadas puede entrar a
+  // marcarlas sin dejar su rol de reportes — a diferencia de "Marcar
+  // asistencia de cualquier rutina" (solo para admin), aquí se usa la
+  // identidad real del usuario y únicamente sus rutinas asignadas.
+  function abrirMisRutinasDesdeAdmin(){
+    if (!currentUser || !currentUser.rutinas || !currentUser.rutinas.length) return;
+    adminUserBeforeMarking = currentUser;
+    adminMarkingMode = true;
+    const u = (currentUser.cd === 'Ambos') ? { ...currentUser, cd: selectedCD } : currentUser;
+    currentUser = u;
+    document.getElementById('leaderName').textContent = u.name;
+    document.getElementById('leaderRole').textContent = u.role;
+    document.getElementById('leaderAvatar').textContent = u.initials;
+    document.getElementById('leaderCdTag').textContent = 'CD ' + selectedCD;
+    screenAdmin.hidden = true;
+    screenLeader.hidden = false;
+    initLeaderPortal(u);
+  }
+  document.getElementById('btnAdminMisRutinas').addEventListener('click', abrirMisRutinasDesdeAdmin);
+
+  function abrirMisRutinasDesdeAbi(){
+    if (!currentUser || !currentUser.rutinas || !currentUser.rutinas.length) return;
+    abiUserBeforeMarking = currentUser;
+    abiMarkingMode = true;
+    const u = (currentUser.cd === 'Ambos') ? { ...currentUser, cd: selectedCD } : currentUser;
+    currentUser = u;
+    document.getElementById('leaderName').textContent = u.name;
+    document.getElementById('leaderRole').textContent = u.role;
+    document.getElementById('leaderAvatar').textContent = u.initials;
+    document.getElementById('leaderCdTag').textContent = 'CD ' + selectedCD;
+    screenAbi.hidden = true;
+    screenLeader.hidden = false;
+    initLeaderPortal(u);
+  }
+  document.getElementById('btnAbiMisRutinas').addEventListener('click', abrirMisRutinasDesdeAbi);
+
   function personsForLeaderRutina(rutina, cd){
     let list = PEOPLE.filter(p => p.cd === cd && (p.rutinas||[]).includes(rutina));
     if (leaderState.usaTurnos && leaderState.turno){
@@ -2895,7 +2960,6 @@
     document.getElementById('sessionMeta').textContent = esFinDeSemanaBloqueado
       ? `Esta rutina es de lunes a viernes. Hoy es fin de semana: lo que marques aquí no quedará registrado en Adherencia.`
       : `Horario: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''} · Ventana de llegada a tiempo: ${info.ventana || 15} min`;
-    document.getElementById('searchLeader').value = '';
 
     const turnoBar = document.getElementById('turnoSwitchBar');
     if (leaderState.usaTurnos){
@@ -2912,54 +2976,12 @@
     updateLeaderStats(user.cd);
   }
 
-  function renderLeaderTable(cd, query){
-    const tbody = document.getElementById('leaderBody');
-    const q = query.trim().toLowerCase();
-    let list = personsForLeaderRutina(leaderState.rutina, cd);
-    if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q) || (p.id||'').includes(q));
-
-    tbody.innerHTML = list.map(p => {
-      const mark = leaderState.marks[p.id];
-      const rowClass = mark ? (mark.status === 'ok' ? 'row-marked-ok' : 'row-marked-late') : '';
-      return `
-        <tr class="${rowClass}" data-pid="${p.id}">
-          <td><div class="cell-name"><div class="cell-av">${initials(p.nombre)}</div><div><b>${p.nombre}</b></div></div></td>
-          <td>${p.id || '—'}</td>
-          <td>${p.cargo || '—'}</td>
-          <td style="text-align:right;">
-            <div class="status-btns" style="justify-content:flex-end;">
-              <button class="status-btn ${mark && mark.status==='ok' ? 'marked-ok' : ''}" data-action="ok" data-pid="${p.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                A tiempo
-              </button>
-              <button class="status-btn ${mark && mark.status==='late' ? 'marked-late' : ''}" data-action="late" data-pid="${p.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Tarde
-              </button>
-              ${mark ? `<span class="mark-time">${mark.time}</span>` : ''}
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    if (list.length === 0){
-      tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Sin resultados para esta búsqueda.</div></td></tr>';
-    }
-
-    tbody.querySelectorAll('.status-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const pid = btn.dataset.pid;
-        const action = btn.dataset.action;
-        const now = new Date();
-        const time = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-        leaderState.marks[pid] = { status: action, time };
-        const persona = PEOPLE.find(x => x.id === pid);
-        if (persona) logAttendance(persona, leaderState.rutina, cd, action, time);
-        renderLeaderTable(currentUser.cd, document.getElementById('searchLeader').value);
-        updateLeaderStats(currentUser.cd);
-      });
-    });
+  // La marcación de asistencia ahora es EXCLUSIVAMENTE por escaneo de QR
+  // (ver procesarCedulaEscaneada): ya no existe un checklist manual de
+  // "A tiempo"/"Tarde" en pantalla, así que esta función solo mantiene los
+  // contadores (A tiempo / Tarde / Pendientes) al día.
+  function renderLeaderTable(cd, _query){
+    updateLeaderStats(cd);
   }
 
   function updateLeaderStats(cd){
@@ -2970,10 +2992,6 @@
     document.getElementById('statLate').textContent = late;
     document.getElementById('statPending').textContent = Math.max(total - ok - late, 0);
   }
-
-  document.getElementById('searchLeader').addEventListener('input', (e) => {
-    renderLeaderTable(currentUser.cd, e.target.value);
-  });
 
   // ================= Evidencia fotográfica de la rutina =================
   // Abre la cámara en vivo (nunca la galería), captura un fotograma, le
@@ -3212,7 +3230,6 @@
     const time = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
     leaderState.marks[persona.id] = { status, time };
     logAttendance(persona, leaderState.rutina, currentUser.cd, status, time);
-    renderLeaderTable(currentUser.cd, document.getElementById('searchLeader').value);
     updateLeaderStats(currentUser.cd);
 
     setScanStatus(`✓ ${persona.nombre} marcado como "${status === 'ok' ? 'A tiempo' : 'Tarde'}" (${time}).`, status === 'ok' ? 'ok' : 'late');
@@ -3381,11 +3398,10 @@
       else if (tabId === 'tabTurnos') renderTurnos();
       else if (tabId === 'tabAdherencia') renderAdherencia();
       else if (tabId === 'tabAdherenciaPersona') renderAdherenciaPorPersona();
-      else if (!tabId) renderAdmin(!!(currentUser && currentUser.reportOnly));
-      else renderAdmin(!!(currentUser && currentUser.reportOnly)); // KPIs de la portada dependen de PEOPLE también
+      else if (!tabId) renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin));
+      else renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin)); // KPIs de la portada dependen de PEOPLE también
     }
     if (!screenLeader.hidden && leaderState.rutina && currentUser){
-      renderLeaderTable(currentUser.cd, document.getElementById('searchLeader').value);
       updateLeaderStats(currentUser.cd);
     }
   });

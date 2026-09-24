@@ -392,7 +392,10 @@
     position:relative; width:100%; aspect-ratio:1; border-radius:14px; overflow:hidden; background:#000;
     border:1.5px solid var(--border);
   }
-  .scan-video-wrap video{width:100%; height:100%; object-fit:cover;}
+  .scan-video-wrap video, .scan-video-wrap canvas, .scan-video-wrap img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photo-actions{display:flex; gap:10px;}
+  .photo-actions .btn-camera{flex:1; justify-content:center;}
+  .photo-actions .btn-icon{width:auto; padding:0 16px; border-radius:12px; font-size:13px; font-weight:600; color:var(--text-dim); gap:6px;}
   .scan-status{
     text-align:center; font-size:13px; color:var(--text-dim); min-height:38px; display:flex; align-items:center;
     justify-content:center; padding:8px 12px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border);
@@ -1231,6 +1234,30 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Tomar foto
       </button>
+    </div>
+
+    <div class="scan-overlay" id="photoOverlay" hidden>
+      <div class="scan-box">
+        <div class="scan-header">
+          <div class="scan-title">Evidencia fotográfica</div>
+          <button class="btn-icon" id="btnPhotoClose" title="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="scan-video-wrap">
+          <video id="photoVideo" playsinline muted hidden></video>
+          <canvas id="photoCanvas" hidden></canvas>
+          <img id="photoPreview" hidden>
+        </div>
+        <div class="scan-status" id="photoStatus">Apunta la cámara a la evidencia de la rutina.</div>
+        <div class="photo-actions" id="photoActions">
+          <button class="btn-camera" id="btnPhotoShoot" type="button">Capturar</button>
+        </div>
+        <div class="photo-actions" id="photoConfirmActions" hidden>
+          <button class="btn-icon" id="btnPhotoRetry" type="button">Repetir</button>
+          <button class="btn-camera" id="btnPhotoSave" type="button">Guardar evidencia</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2948,8 +2975,175 @@
     renderLeaderTable(currentUser.cd, e.target.value);
   });
 
-  document.getElementById('btnCamera').addEventListener('click', () => {
-    alert('En la versión final, este botón abrirá la cámara del dispositivo en vivo (sin acceso a galería) y aplicará la marca de agua con fecha, hora, rutina y CD antes de guardar en Firebase.');
+  // ================= Evidencia fotográfica de la rutina =================
+  // Abre la cámara en vivo (nunca la galería), captura un fotograma, le
+  // superpone una marca de agua con fecha, hora, rutina y CD, y guarda la
+  // imagen (comprimida a JPEG) como base64 en Firestore, en la colección
+  // "evidenciasFoto", con id determinístico cd_rutina_fecha para que tomar
+  // otra foto de la misma rutina el mismo día reemplace la anterior en vez
+  // de acumular documentos.
+  const colEvidencias = collection(db, 'evidenciasFoto');
+  let photoStream = null;
+  let photoCapturedDataUrl = null;
+
+  function setPhotoStatus(msg, kind){
+    const el = document.getElementById('photoStatus');
+    el.textContent = msg;
+    el.className = 'scan-status' + (kind ? ' ' + kind : '');
+  }
+
+  async function abrirCamaraFoto(){
+    const overlay = document.getElementById('photoOverlay');
+    const video = document.getElementById('photoVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const preview = document.getElementById('photoPreview');
+
+    if (!leaderState.rutina){
+      setPhotoStatus('Selecciona primero una rutina activa.', 'err');
+      overlay.hidden = false;
+      document.getElementById('photoActions').hidden = true;
+      document.getElementById('photoConfirmActions').hidden = true;
+      return;
+    }
+
+    overlay.hidden = false;
+    photoCapturedDataUrl = null;
+    video.hidden = false;
+    canvas.hidden = true;
+    preview.hidden = true;
+    document.getElementById('photoActions').hidden = false;
+    document.getElementById('photoConfirmActions').hidden = true;
+    setPhotoStatus('Apunta la cámara a la evidencia de la rutina.');
+
+    try {
+      photoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      video.srcObject = photoStream;
+      await video.play();
+    } catch (err) {
+      setPhotoStatus('No se pudo acceder a la cámara. Revisa los permisos del navegador para este sitio.', 'err');
+    }
+  }
+
+  function detenerCamaraFoto(){
+    if (photoStream){
+      photoStream.getTracks().forEach(t => t.stop());
+      photoStream = null;
+    }
+  }
+
+  function cerrarCamaraFoto(){
+    detenerCamaraFoto();
+    document.getElementById('photoOverlay').hidden = true;
+    photoCapturedDataUrl = null;
+  }
+
+  function capturarFoto(){
+    const video = document.getElementById('photoVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const preview = document.getElementById('photoPreview');
+    if (!video.videoWidth){
+      setPhotoStatus('La cámara aún no está lista, espera un segundo.', 'err');
+      return;
+    }
+
+    // Recorte cuadrado centrado, igual que el video en vivo (object-fit:cover),
+    // para que la foto capturada coincida con lo que el líder ve en pantalla.
+    const side = Math.min(video.videoWidth, video.videoHeight);
+    const sx = (video.videoWidth - side) / 2;
+    const sy = (video.videoHeight - side) / 2;
+    canvas.width = side;
+    canvas.height = side;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+
+    // Marca de agua: fecha, hora, rutina y CD, en una franja semitransparente
+    // sobre el borde inferior de la imagen.
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-CO');
+    const hora = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const linea1 = `${leaderState.rutina} · ${currentUser.cd}`;
+    const linea2 = `${fecha} ${hora}`;
+
+    const bandH = Math.max(Math.round(side * 0.14), 56);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, side - bandH, side, bandH);
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'middle';
+    const fontMain = Math.max(Math.round(side * 0.032), 14);
+    const fontSub = Math.max(Math.round(side * 0.026), 12);
+    ctx.font = `600 ${fontMain}px 'Inter', Arial, sans-serif`;
+    ctx.fillText(linea1, side * 0.04, side - bandH * 0.62);
+    ctx.font = `400 ${fontSub}px 'Inter', Arial, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(linea2, side * 0.04, side - bandH * 0.28);
+
+    photoCapturedDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+
+    detenerCamaraFoto();
+    video.hidden = true;
+    canvas.hidden = false;
+    preview.hidden = true;
+    document.getElementById('photoActions').hidden = true;
+    document.getElementById('photoConfirmActions').hidden = false;
+    setPhotoStatus('Revisa la foto antes de guardarla.');
+  }
+
+  async function guardarFotoEvidencia(){
+    if (!photoCapturedDataUrl){
+      setPhotoStatus('No hay foto capturada.', 'err');
+      return;
+    }
+    // Firestore rechaza documentos de más de ~1MB; si la foto comprimida
+    // sigue siendo muy grande, avisamos en vez de fallar en silencio.
+    if (photoCapturedDataUrl.length > 900000){
+      setPhotoStatus('La foto pesa demasiado para guardarla. Intenta con menos luz de fondo o vuelve a intentarlo.', 'err');
+      return;
+    }
+
+    const btnSave = document.getElementById('btnPhotoSave');
+    btnSave.disabled = true;
+    setPhotoStatus('Guardando evidencia…');
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    const cd = currentUser.cd;
+    const rutina = leaderState.rutina;
+    const idEvidencia = `${cd}_${rutina}_${fecha}`;
+
+    try {
+      await setDoc(doc(colEvidencias, idEvidencia), {
+        cd,
+        rutina,
+        fecha,
+        hora: new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' }),
+        registradoPor: currentUser.name || currentUser.usuario || '',
+        imagenBase64: photoCapturedDataUrl,
+      });
+      setPhotoStatus('✓ Evidencia guardada.', 'ok');
+      setTimeout(cerrarCamaraFoto, 700);
+    } catch (err) {
+      console.error('No se pudo guardar la evidencia fotográfica:', err);
+      setPhotoStatus('No se pudo guardar la foto. Revisa tu conexión e inténtalo de nuevo.', 'err');
+    } finally {
+      btnSave.disabled = false;
+    }
+  }
+
+  function repetirFoto(){
+    photoCapturedDataUrl = null;
+    document.getElementById('photoConfirmActions').hidden = true;
+    abrirCamaraFoto();
+  }
+
+  document.getElementById('btnCamera').addEventListener('click', abrirCamaraFoto);
+  document.getElementById('btnPhotoClose').addEventListener('click', cerrarCamaraFoto);
+  document.getElementById('btnPhotoShoot').addEventListener('click', capturarFoto);
+  document.getElementById('btnPhotoRetry').addEventListener('click', repetirFoto);
+  document.getElementById('btnPhotoSave').addEventListener('click', guardarFotoEvidencia);
+  document.getElementById('photoOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'photoOverlay') cerrarCamaraFoto();
   });
 
   // ================= Escáner QR de asistencia =================

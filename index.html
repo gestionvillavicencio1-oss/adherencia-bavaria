@@ -357,27 +357,6 @@
   /* ============ Pantalla 4: portal del responsable ============ */
   #screenLeader{ align-items:stretch; padding:0; }
   .leader-body{ padding:28px; max-width:1100px; margin:0 auto; width:100%; }
-  .rutina-select-row{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
-  .turno-switch-bar{
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px;
-    background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:12px 16px;
-  }
-  .turno-switch-label{font-size:12.5px; color:var(--text-faint); font-weight:600; margin-right:4px;}
-  .turno-switch-btn{
-    display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1.5px solid var(--border);
-    color:var(--text-dim); border-radius:100px; padding:8px 16px; font-size:12.5px; font-weight:600;
-    font-family:inherit; cursor:pointer; transition:all .12s ease;
-  }
-  .turno-switch-btn:hover{border-color:var(--text-faint);}
-  .turno-switch-btn.active{border-color:var(--gold); color:var(--gold); background:rgba(232,185,35,0.08);}
-  .rutina-pick{
-    background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:16px 20px;
-    cursor:pointer; flex:1; min-width:220px; transition:border-color .15s ease, transform .15s ease;
-  }
-  .rutina-pick:hover{border-color:var(--gold-2); transform:translateY(-2px);}
-  .rutina-pick.active{border-color:var(--gold); background:rgba(232,185,35,0.06);}
-  .rutina-pick .rp-name{font-family:'Fraunces',Georgia,serif; font-size:16px; font-weight:600; margin-bottom:4px;}
-  .rutina-pick .rp-meta{font-size:12px; color:var(--text-faint);}
 
   /* ============ Poka-yoke: selección obligatoria antes de escanear ============ */
   .pyk-wizard{
@@ -1315,7 +1294,6 @@
   </div>
 
   <div class="leader-body">
-    <div class="rutina-select-row" id="leaderRutinaRow" hidden></div>
 
     <div class="pyk-wizard" id="pykWizard">
       <div class="pyk-title">
@@ -3088,11 +3066,16 @@
     // muestra aparte porque requiere elegir turno A/B/C. El resto de rutinas del
     // usuario (Entrenamiento OL, Matinal, Diaria Logística, etc.) van juntas bajo
     // "Entrenamiento / otra rutina", cada una como sub-opción por nombre.
+    // Guarda defensiva: si en el futuro alguna ruta de entrada llama esto con un
+    // usuario sin rutinas asignadas, se devuelve un wizard vacío en vez de lanzar
+    // un TypeError (hoy no ocurre: los botones "Marcar mis rutinas" ya validan
+    // user.rutinas.length antes de llegar aquí, pero es defensa en profundidad).
+    const rutinasUsuario = user.rutinas || [];
     const cats = [];
-    if (user.rutinas.includes('Cambio de turno')){
+    if (rutinasUsuario.includes('Cambio de turno')){
       cats.push({ id: 'turno', nombre: 'Cambio de Turno', rutina: 'Cambio de turno', usaTurnos: !!user.usaTurnos });
     }
-    const otras = user.rutinas.filter(r => r !== 'Cambio de turno');
+    const otras = rutinasUsuario.filter(r => r !== 'Cambio de turno');
     if (otras.length){
       cats.push({ id: 'entrenamiento', nombre: 'Entrenamiento', opciones: otras });
     }
@@ -3101,12 +3084,20 @@
 
   function pykRender(user){
     pykState = { categoria: null, rutina: null, turno: null, user };
+    // Limpia la rutina/turno activos mientras el wizard está pendiente de una nueva
+    // confirmación (al entrar por primera vez o tras "Cambiar selección"), para que
+    // el panel "Ya registrados hoy" y las estadísticas no sigan mostrando datos de
+    // la rutina anterior antes de que se confirme la nueva.
+    leaderState.rutina = null;
+    leaderState.marks = {};
     const wizard = document.getElementById('pykWizard');
     wizard.classList.remove('pyk-done');
     document.getElementById('btnScanQr').disabled = true;
     document.getElementById('pykSubStep').hidden = true;
     document.getElementById('pykSubRow').innerHTML = '';
     document.getElementById('btnPykConfirm').disabled = true;
+    updateLeaderStats(user.cd);
+    refrescarFotoBar();
 
     const cats = pykCategoriasPara(user);
     const catRow = document.getElementById('pykCatRow');
@@ -3382,7 +3373,13 @@
   // activos, y actualiza la miniatura en la barra de foto. Se llama solo al cambiar
   // de rutina o justo después de guardar/repetir una evidencia — nunca en vivo — para
   // no sumar lecturas de más (ver el fix de cuota de Firestore ya aplicado).
+  // Contador de "petición en curso": si selectLeaderRutina() cambia de rutina/turno
+  // dos veces seguidas antes de que el primer getDoc() resuelva, la respuesta vieja
+  // ya no coincide con la última llamada y se descarta en vez de pisar la miniatura
+  // de la rutina nueva (evita el parpadeo/race condition entre dos confirmaciones rápidas).
+  let fotoBarReqId = 0;
   async function refrescarFotoBar(){
+    const miReqId = ++fotoBarReqId;
     const thumb = document.getElementById('photoBarThumb');
     const sub = document.getElementById('photoBarSub');
     const label = document.getElementById('btnCameraLabel');
@@ -3397,6 +3394,7 @@
     const idEvidencia = `${currentUser.cd}_${leaderState.rutina}_${fecha}`;
     try {
       const snap = await getDoc(doc(colEvidencias, idEvidencia));
+      if (miReqId !== fotoBarReqId) return; // llegó una selección más nueva mientras esperábamos: descartar
       if (snap.exists()){
         const data = snap.data();
         evidenciaGuardadaHoy = data;
@@ -3409,6 +3407,7 @@
         label.textContent = 'Tomar foto';
       }
     } catch (e) {
+      if (miReqId !== fotoBarReqId) return;
       // Fallo de lectura silencioso: no bloquea el flujo, solo no se muestra miniatura.
       sub.textContent = 'Solo cámara en vivo — no se permite subir desde galería.';
       label.textContent = 'Tomar foto';
@@ -3839,8 +3838,7 @@
       else renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin)); // KPIs de la portada dependen de PEOPLE también
     }
     if (!screenLeader.hidden && leaderState.rutina && currentUser){
-      updateLeaderStats(currentUser.cd);
-      if (typeof renderYaRegistradosHoy === 'function') renderYaRegistradosHoy();
+      updateLeaderStats(currentUser.cd); // ya refresca el panel "Ya registrados hoy" internamente
     }
   }
   liveRefreshCallbacks.people.push(refrescarVistaAdminYLider);

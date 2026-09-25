@@ -82,6 +82,33 @@
   .link-consulta:hover{ color:var(--gold); border-color:var(--gold); }
   .link-consulta svg{ width:15px; height:15px; flex-shrink:0; }
 
+  /* ============ Botón principal "Mi código QR" (poka-yoke: acción más usada, primero) ============ */
+  .qr-main-btn{
+    position:relative; width:100%; max-width:420px; background:linear-gradient(155deg, var(--surface) 0%, var(--surface-2) 100%);
+    border:1.5px solid var(--gold-2); border-radius:22px; padding:24px 26px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; gap:18px; text-align:left; overflow:hidden;
+    box-shadow:0 24px 50px -22px rgba(232,185,35,0.35); transition:transform .16s ease, box-shadow .16s ease;
+    margin-bottom:34px;
+  }
+  .qr-main-btn:hover{ transform:translateY(-3px); box-shadow:0 28px 60px -20px rgba(232,185,35,0.45); }
+  .qr-main-btn:active{ transform:translateY(-1px); }
+  .qr-main-icon{
+    position:relative; flex-shrink:0; width:64px; height:64px; border-radius:16px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; background:#fff;
+  }
+  .qr-main-icon svg.qr-pattern{ position:absolute; inset:0; width:100%; height:100%; color:rgba(200,39,30,0.16); }
+  .qr-main-icon svg.qr-user{ position:relative; width:34px; height:34px; color:var(--red); }
+  .qr-main-text{ flex:1; position:relative; z-index:1; }
+  .qr-main-title{ font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; color:var(--text); margin-bottom:3px; }
+  .qr-main-sub{ font-size:12.5px; color:var(--text-dim); line-height:1.4; }
+  .qr-main-arrow{
+    flex-shrink:0; width:34px; height:34px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; color:var(--text-faint); transition:background .16s ease, color .16s ease, transform .16s ease;
+  }
+  .qr-main-arrow svg{ width:16px; height:16px; }
+  .qr-main-btn:hover .qr-main-arrow{ background:linear-gradient(135deg,var(--red-2),var(--red)); color:#fff; transform:translateX(2px); border-color:transparent; }
+  .cd-section-label{ font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; margin-bottom:16px; text-align:center; }
+
   /* ============ Pantalla: consulta de carné QR (sin login) ============ */
   #screenConsulta{ align-items:center; justify-content:center; padding:32px 16px; }
   .consulta-card{
@@ -351,6 +378,78 @@
   .rutina-pick.active{border-color:var(--gold); background:rgba(232,185,35,0.06);}
   .rutina-pick .rp-name{font-family:'Fraunces',Georgia,serif; font-size:16px; font-weight:600; margin-bottom:4px;}
   .rutina-pick .rp-meta{font-size:12px; color:var(--text-faint);}
+
+  /* ============ Poka-yoke: selección obligatoria antes de escanear ============ */
+  .pyk-wizard{
+    background:var(--surface); border:1.5px solid var(--gold-2); border-radius:18px; padding:22px 24px; margin-bottom:24px;
+  }
+  .pyk-wizard.pyk-done{ border-color:var(--border); }
+  .pyk-title{ display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:700; letter-spacing:.03em; color:var(--gold); text-transform:uppercase; margin-bottom:14px; }
+  .pyk-title svg{ width:15px; height:15px; }
+  .pyk-step{ margin-bottom:16px; }
+  .pyk-step:last-child{ margin-bottom:0; }
+  .pyk-step-label{ font-size:12.5px; color:var(--text-faint); font-weight:600; margin-bottom:9px; }
+  .pyk-cat-row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .pyk-cat-btn{
+    display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1.5px solid var(--border);
+    border-radius:13px; padding:13px 18px; cursor:pointer; font-family:inherit; color:var(--text); flex:1; min-width:200px;
+    transition:border-color .14s ease, transform .14s ease, background .14s ease;
+  }
+  .pyk-cat-btn:hover{ border-color:var(--gold-2); transform:translateY(-2px); }
+  .pyk-cat-btn.active{ border-color:var(--gold); background:rgba(232,185,35,0.08); }
+  .pyk-cat-num{
+    flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--surface); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--text-faint);
+  }
+  .pyk-cat-btn.active .pyk-cat-num{ background:var(--gold); border-color:var(--gold); color:#0a0604; }
+  .pyk-cat-name{ font-size:14px; font-weight:600; }
+  .pyk-sub-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .pyk-sub-btn{
+    background:var(--surface-2); border:1.5px solid var(--border); color:var(--text-dim); border-radius:100px;
+    padding:9px 18px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:all .12s ease;
+  }
+  .pyk-sub-btn:hover{ border-color:var(--text-faint); }
+  .pyk-sub-btn.active{ border-color:var(--gold); color:var(--gold); background:rgba(232,185,35,0.08); }
+  .pyk-confirm-row{ margin-top:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .btn-pyk-confirm{
+    background:linear-gradient(135deg,var(--gold-2),var(--gold)); color:#0a0604; border:none; border-radius:11px;
+    padding:11px 22px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer;
+  }
+  .btn-pyk-confirm:disabled{ opacity:.4; cursor:not-allowed; filter:none; }
+  .btn-pyk-confirm:not(:disabled):hover{ filter:brightness(1.05); }
+  .pyk-summary{
+    display:none; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  }
+  .pyk-wizard.pyk-done .pyk-summary{ display:flex; }
+  .pyk-wizard.pyk-done .pyk-body{ display:none; }
+  .pyk-summary-text{ display:flex; align-items:center; gap:10px; font-size:14px; }
+  .pyk-summary-text b{ font-family:'Fraunces',Georgia,serif; font-size:16px; }
+  .pyk-summary-check{
+    flex-shrink:0; width:22px; height:22px; border-radius:50%; background:#7cd68a; color:#0a2b0e;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pyk-summary-check svg{ width:13px; height:13px; }
+  .btn-pyk-change{
+    background:none; border:1.5px solid var(--border); color:var(--text-dim); border-radius:100px;
+    padding:8px 16px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer;
+  }
+  .btn-pyk-change:hover{ border-color:var(--gold); color:var(--gold); }
+
+  .btn-scan:disabled{ opacity:.4; cursor:not-allowed; filter:none; }
+
+  /* ============ Chulito de confirmación al leer un QR nuevo ============ */
+  .scan-success-check{
+    position:fixed; inset:0; z-index:250; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; opacity:0; transition:opacity .15s ease;
+  }
+  .scan-success-check.show{ opacity:1; }
+  .scan-success-check .ssc-circle{
+    width:96px; height:96px; border-radius:50%; background:#7cd68a; color:#0a2b0e;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 20px 60px -10px rgba(124,214,138,0.6);
+    transform:scale(0.7); transition:transform .2s cubic-bezier(.34,1.56,.64,1);
+  }
+  .scan-success-check.show .ssc-circle{ transform:scale(1); }
+  .scan-success-check .ssc-circle svg{ width:48px; height:48px; }
 
   .session-card{
     background:var(--surface); border:1.5px solid var(--border); border-radius:18px; padding:24px; margin-bottom:24px;
@@ -684,9 +783,22 @@
   <img class="harp-badge" src="data:image/webp;base64,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" alt="Logo Gerencia Llanos">
 
   <div class="brand-name">Gerencia Llanos</div>
-  <h1>Selecciona tu <em>Centro de Distribución</em></h1>
-  <p class="lede">Elige el CD para continuar. El acceso, las rutinas y los responsables se cargan según la sede seleccionada.</p>
+  <h1>Adherencia <em>Rutinas</em></h1>
+  <p class="lede">Consulta tu carné o, si eres supervisor, selecciona tu Centro de Distribución para registrar asistencia.</p>
 
+  <button class="qr-main-btn" id="btnAbrirConsulta">
+    <div class="qr-main-icon">
+      <svg class="qr-pattern" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="2" height="2"/><rect x="20" y="16" width="2" height="2"/><rect x="16" y="20" width="2" height="2"/><rect x="20" y="20" width="2" height="2"/><rect x="10" y="2" width="2" height="2"/><rect x="10" y="6" width="2" height="2"/><rect x="2" y="10" width="2" height="2"/><rect x="6" y="10" width="2" height="2"/><rect x="10" y="10" width="2" height="2"/><rect x="14" y="10" width="2" height="2"/><rect x="18" y="10" width="2" height="2"/><rect x="22" y="10" width="2" height="2"/><rect x="10" y="14" width="2" height="2"/><rect x="10" y="18" width="2" height="2"/><rect x="10" y="22" width="2" height="2"/><rect x="14" y="22" width="2" height="2"/></svg>
+      <svg class="qr-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <div class="qr-main-text">
+      <div class="qr-main-title">Mi código QR</div>
+      <div class="qr-main-sub">Consulta tu carné digital con tu número de cédula — sin necesidad de usuario ni contraseña.</div>
+    </div>
+    <div class="qr-main-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+  </button>
+
+  <div class="cd-section-label">Acceso de supervisores — selecciona tu CD</div>
   <div class="cd-grid">
     <button class="cd-card" data-cd="Villavicencio">
       <div class="cd-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
@@ -707,11 +819,6 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 4 9 9 9s9-4 9-9V7l-9-5z"/></svg>
     Control de asistencia a rutinas — acceso restringido
   </div>
-
-  <button class="link-consulta" id="btnAbrirConsulta">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"/></svg>
-    ¿Eres colaborador? Consulta tu carné QR aquí
-  </button>
 </div>
 
 <!-- ============================================================ -->
@@ -1181,13 +1288,33 @@
   </div>
 
   <div class="leader-body">
-    <div class="rutina-select-row" id="leaderRutinaRow"></div>
+    <div class="rutina-select-row" id="leaderRutinaRow" hidden></div>
 
-    <div class="turno-switch-bar" id="turnoSwitchBar" hidden>
-      <span class="turno-switch-label">Turno de esta semana:</span>
-      <button class="turno-switch-btn" data-turno="A"><span class="turno-dot a"></span>Turno A</button>
-      <button class="turno-switch-btn" data-turno="B"><span class="turno-dot b"></span>Turno B</button>
-      <button class="turno-switch-btn" data-turno="C"><span class="turno-dot c"></span>Turno C</button>
+    <div class="pyk-wizard" id="pykWizard">
+      <div class="pyk-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Antes de escanear, confirma qué vas a registrar
+      </div>
+      <div class="pyk-body">
+        <div class="pyk-step">
+          <div class="pyk-step-label">1. Elige una categoría</div>
+          <div class="pyk-cat-row" id="pykCatRow"></div>
+        </div>
+        <div class="pyk-step" id="pykSubStep" hidden>
+          <div class="pyk-step-label" id="pykSubLabel">2. Elige la opción</div>
+          <div class="pyk-sub-row" id="pykSubRow"></div>
+        </div>
+        <div class="pyk-confirm-row">
+          <button class="btn-pyk-confirm" id="btnPykConfirm" disabled>Confirmar y habilitar escaneo</button>
+        </div>
+      </div>
+      <div class="pyk-summary">
+        <div class="pyk-summary-text">
+          <div class="pyk-summary-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span>Registrando: <b id="pykSummaryText">—</b></span>
+        </div>
+        <button class="btn-pyk-change" id="btnPykChange">Cambiar selección</button>
+      </div>
     </div>
 
     <div class="session-card">
@@ -1201,10 +1328,14 @@
         <div class="sstat late"><b id="statLate">0</b><span>Tarde</span></div>
         <div class="sstat pending"><b id="statPending">0</b><span>Pendientes</span></div>
       </div>
-      <button class="btn-scan" id="btnScanQr">
+      <button class="btn-scan" id="btnScanQr" disabled title="Confirma primero la categoría arriba">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7V5a2 2 0 0 1 2-2h2M3 17v2a2 2 0 0 0 2 2h2M21 7V5a2 2 0 0 0-2-2h-2M21 17v2a2 2 0 0 1-2 2h-2M7 8h3v3H7zM14 8h3v3h-3zM7 14h3v3H7zM14 14h1M17 14h1"/></svg>
         Escanear QR
       </button>
+    </div>
+
+    <div class="scan-success-check" id="scanSuccessCheck">
+      <div class="ssc-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
     </div>
 
     <div class="scan-overlay" id="scanOverlay" hidden>
@@ -2904,33 +3035,140 @@
     clockInterval = setInterval(tick, 1000);
   }
 
-  document.querySelectorAll('.turno-switch-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      leaderState.turno = btn.dataset.turno;
-      document.querySelectorAll('.turno-switch-btn').forEach(b => b.classList.toggle('active', b === btn));
-      updateLeaderStats(currentUser.cd);
+  // ================= Poka-yoke: wizard obligatorio antes de escanear =================
+  // Antes, la rutina/turno activos se elegían con tarjetas de selección libre
+  // (rutina-pick / turno-switch-bar) y "Escanear QR" quedaba habilitado desde el
+  // primer momento con lo que hubiera seleccionado por defecto — fácil de escanear
+  // sin fijarse bien en qué turno/rutina se estaba registrando. Ahora la selección
+  // se agrupa en 2 categorías (1. Cambio de Turno → turno A/B/C, 2. Entrenamiento/otra
+  // rutina → nombre) y el botón de escaneo permanece deshabilitado hasta que el
+  // supervisor confirma explícitamente su elección con "Confirmar y habilitar escaneo".
+  let pykState = { categoria: null, rutina: null, turno: null, user: null };
+
+  function pykCategoriasPara(user){
+    // Categoría "Cambio de turno" (si el usuario tiene esa rutina asignada) se
+    // muestra aparte porque requiere elegir turno A/B/C. El resto de rutinas del
+    // usuario (Entrenamiento OL, Matinal, Diaria Logística, etc.) van juntas bajo
+    // "Entrenamiento / otra rutina", cada una como sub-opción por nombre.
+    const cats = [];
+    if (user.rutinas.includes('Cambio de turno')){
+      cats.push({ id: 'turno', nombre: 'Cambio de Turno', rutina: 'Cambio de turno', usaTurnos: !!user.usaTurnos });
+    }
+    const otras = user.rutinas.filter(r => r !== 'Cambio de turno');
+    if (otras.length){
+      cats.push({ id: 'entrenamiento', nombre: 'Entrenamiento', opciones: otras });
+    }
+    return cats;
+  }
+
+  function pykRender(user){
+    pykState = { categoria: null, rutina: null, turno: null, user };
+    const wizard = document.getElementById('pykWizard');
+    wizard.classList.remove('pyk-done');
+    document.getElementById('btnScanQr').disabled = true;
+    document.getElementById('pykSubStep').hidden = true;
+    document.getElementById('pykSubRow').innerHTML = '';
+    document.getElementById('btnPykConfirm').disabled = true;
+
+    const cats = pykCategoriasPara(user);
+    const catRow = document.getElementById('pykCatRow');
+    catRow.innerHTML = '';
+    cats.forEach((cat, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pyk-cat-btn';
+      btn.innerHTML = `<span class="pyk-cat-num">${idx + 1}</span><span class="pyk-cat-name">${cat.nombre}</span>`;
+      btn.addEventListener('click', () => pykElegirCategoria(cat, btn));
+      catRow.appendChild(btn);
     });
+
+    // Si solo hay una categoría posible (p. ej. un solo entrenamiento sin turnos),
+    // se preselecciona para no obligar a un clic extra sobre una única opción.
+    if (cats.length === 1) pykElegirCategoria(cats[0], catRow.firstElementChild);
+  }
+
+  function pykElegirCategoria(cat, btnEl){
+    pykState.categoria = cat;
+    pykState.rutina = null;
+    pykState.turno = null;
+    document.querySelectorAll('#pykCatRow .pyk-cat-btn').forEach(b => b.classList.toggle('active', b === btnEl));
+
+    const subStep = document.getElementById('pykSubStep');
+    const subRow = document.getElementById('pykSubRow');
+    const subLabel = document.getElementById('pykSubLabel');
+    subRow.innerHTML = '';
+    document.getElementById('btnPykConfirm').disabled = true;
+
+    if (cat.id === 'turno' && cat.usaTurnos){
+      subStep.hidden = false;
+      subLabel.textContent = '2. Elige el turno de esta semana';
+      ['A', 'B', 'C'].forEach(t => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pyk-sub-btn';
+        btn.textContent = 'Turno ' + t;
+        btn.addEventListener('click', () => {
+          pykState.rutina = cat.rutina;
+          pykState.turno = t;
+          document.querySelectorAll('#pykSubRow .pyk-sub-btn').forEach(b => b.classList.toggle('active', b === btn));
+          document.getElementById('btnPykConfirm').disabled = false;
+        });
+        subRow.appendChild(btn);
+      });
+    } else if (cat.id === 'turno'){
+      // Rutina de "Cambio de turno" pero el usuario no maneja turnos rotativos:
+      // se confirma directo, sin paso de sub-selección.
+      subStep.hidden = true;
+      pykState.rutina = cat.rutina;
+      pykState.turno = null;
+      document.getElementById('btnPykConfirm').disabled = false;
+    } else {
+      subStep.hidden = false;
+      subLabel.textContent = '2. Elige el entrenamiento / rutina';
+      cat.opciones.forEach(r => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pyk-sub-btn';
+        btn.textContent = r;
+        btn.addEventListener('click', () => {
+          pykState.rutina = r;
+          pykState.turno = null;
+          document.querySelectorAll('#pykSubRow .pyk-sub-btn').forEach(b => b.classList.toggle('active', b === btn));
+          document.getElementById('btnPykConfirm').disabled = false;
+        });
+        subRow.appendChild(btn);
+      });
+      // Una sola opción de entrenamiento: se preselecciona igual que las categorías,
+      // pero sigue exigiendo el clic en "Confirmar" para habilitar el escaneo.
+      if (cat.opciones.length === 1) subRow.firstElementChild.click();
+    }
+  }
+
+  function pykConfirmar(){
+    if (!pykState.rutina || !pykState.user) return;
+    const user = pykState.user;
+    selectLeaderRutina(pykState.rutina, user, pykState.turno);
+
+    const wizard = document.getElementById('pykWizard');
+    wizard.classList.add('pyk-done');
+    const resumen = pykState.turno ? `${pykState.rutina} · Turno ${pykState.turno}` : pykState.rutina;
+    document.getElementById('pykSummaryText').textContent = resumen;
+    document.getElementById('btnScanQr').disabled = false;
+    document.getElementById('btnScanQr').title = '';
+  }
+  document.getElementById('btnPykConfirm').addEventListener('click', pykConfirmar);
+  document.getElementById('btnPykChange').addEventListener('click', () => {
+    if (typeof cerrarEscanerQr === 'function') cerrarEscanerQr();
+    document.getElementById('btnScanQr').disabled = true;
+    document.getElementById('btnScanQr').title = 'Confirma primero la categoría arriba';
+    pykRender(pykState.user);
   });
 
   function initLeaderPortal(user){
     // Botón "Encuesta ABI" en el portal de líder: solo visible para líderes
     // con tambienAbi=true (no aplica al modo "marcar asistencia" del admin).
     document.getElementById('btnLeaderAbi').hidden = !user.tambienAbi;
-    const row = document.getElementById('leaderRutinaRow');
-    row.innerHTML = '';
-    user.rutinas.forEach((r, idx) => {
-      const div = document.createElement('div');
-      div.className = 'rutina-pick' + (idx === 0 ? ' active' : '');
-      const info = RUTINA_INFO[r] || {};
-      div.innerHTML = `<div class="rp-name">${r}</div><div class="rp-meta">Hora: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''}</div>`;
-      div.addEventListener('click', () => {
-        document.querySelectorAll('.rutina-pick').forEach(el => el.classList.remove('active'));
-        div.classList.add('active');
-        selectLeaderRutina(r, user);
-      });
-      row.appendChild(div);
-    });
-    selectLeaderRutina(user.rutinas[0], user);
+    pykRender(user);
     startClock();
   }
 
@@ -3003,15 +3241,15 @@
     return list;
   }
 
-  function selectLeaderRutina(rutina, user){
+  function selectLeaderRutina(rutina, user, turnoElegido){
     if (typeof cerrarEscanerQr === 'function') cerrarEscanerQr(); // evita escanear para la rutina anterior
     leaderState.rutina = rutina;
     leaderState.marks = {};
-    // Los turnos rotativos A/B/C solo aplican a "Cambio de turno". Antes esto dependía únicamente
-    // de user.usaTurnos (fijo por usuario), lo que en el modo "Marcar asistencia" del admin (que
-    // puede elegir cualquier rutina) ocultaba personas sin turno asignado en rutinas que no usan turnos.
+    // Los turnos rotativos A/B/C solo aplican a "Cambio de turno". El turno ya no se
+    // calcula por defecto aquí: viene de la elección explícita hecha en el wizard
+    // poka-yoke (pykConfirmar), que es obligatoria antes de poder escanear.
     leaderState.usaTurnos = !!user.usaTurnos && rutina === 'Cambio de turno';
-    leaderState.turno = leaderState.usaTurnos ? 'A' : null;
+    leaderState.turno = leaderState.usaTurnos ? (turnoElegido || 'A') : null;
     const info = RUTINA_INFO[rutina] || {};
     const hoy = new Date().toISOString().slice(0, 10);
     const esFinDeSemanaBloqueado = !rutinaAplicaHoy(rutina, hoy);
@@ -3019,16 +3257,6 @@
     document.getElementById('sessionMeta').textContent = esFinDeSemanaBloqueado
       ? `Esta rutina es de lunes a viernes. Hoy es fin de semana: lo que marques aquí no quedará registrado en Adherencia.`
       : `Horario: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''} · Ventana de llegada a tiempo: ${info.ventana || 15} min`;
-
-    const turnoBar = document.getElementById('turnoSwitchBar');
-    if (leaderState.usaTurnos){
-      turnoBar.hidden = false;
-      turnoBar.querySelectorAll('.turno-switch-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.turno === leaderState.turno);
-      });
-    } else {
-      turnoBar.hidden = true;
-    }
 
     logDesignations(rutina, user.cd, personsForLeaderRutina(rutina, user.cd));
     renderLeaderTable(user.cd, '');
@@ -3290,8 +3518,20 @@
     leaderState.marks[persona.id] = { status, time };
     logAttendance(persona, leaderState.rutina, currentUser.cd, status, time);
     updateLeaderStats(currentUser.cd);
+    mostrarChulitoEscaneo();
 
     setScanStatus(`✓ ${persona.nombre} marcado como "${status === 'ok' ? 'A tiempo' : 'Tarde'}" (${time}).`, status === 'ok' ? 'ok' : 'late');
+  }
+
+  // Chulito de confirmación visual: aparece brevemente cada vez que un QR NUEVO
+  // se marca con éxito (no cuando ya estaba registrado), para que el supervisor
+  // tenga una señal clara e inmediata de "esta persona quedó registrada".
+  let chulitoTimeout = null;
+  function mostrarChulitoEscaneo(){
+    const el = document.getElementById('scanSuccessCheck');
+    if (chulitoTimeout) clearTimeout(chulitoTimeout);
+    el.classList.add('show');
+    chulitoTimeout = setTimeout(() => el.classList.remove('show'), 900);
   }
 
   async function abrirEscanerQr(){

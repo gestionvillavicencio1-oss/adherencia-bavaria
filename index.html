@@ -1399,8 +1399,13 @@
 
   // Callbacks que refrescan la pantalla actualmente visible cuando llegan
   // cambios en vivo de Firestore (se registran más abajo, cerca de cada render).
-  const liveRefreshCallbacks = { people: [], users: [] };
+  const liveRefreshCallbacks = { people: [], users: [], asistencias: [] };
 
+  // "colaboradores" y "usuarios" son colecciones chicas (decenas de documentos)
+  // y hacen falta desde ANTES de iniciar sesión: la pantalla de selección de CD
+  // muestra el conteo de colaboradores, y el login necesita USERS ya cargado
+  // en memoria para validar usuario/contraseña. Por eso estas dos sí escuchan
+  // en vivo desde que carga la página.
   onSnapshot(colColaboradores, (snap) => {
     PEOPLE = snap.docs.map(d => normalizarColaborador(d.id, d.data()));
     liveRefreshCallbacks.people.forEach(fn => { try { fn(); } catch(e){} });
@@ -1413,20 +1418,37 @@
     liveRefreshCallbacks.users.forEach(fn => { try { fn(); } catch(e){} });
   }, (err) => console.error('Error escuchando usuarios:', err));
 
-  onSnapshot(colAsistencias, (snap) => {
-    ATTENDANCE_LOG.length = 0;
-    snap.docs.forEach(d => ATTENDANCE_LOG.push(d.data()));
-  }, (err) => console.error('Error escuchando asistencias:', err));
+  // "asistencias", "designados" y "encuestasABI" en cambio SOLO hacen falta
+  // dentro de los portales de líder/admin/auditor ABI (ya con sesión iniciada),
+  // y son colecciones que crecen sin parar con el historial. Si se suscriben
+  // desde que carga la página, cualquier persona que solo abre el link para
+  // consultar su carné QR (pantalla sin login) dispara una lectura completa de
+  // TODO el historial — con el link circulando entre todos los colaboradores,
+  // esto agotó la cuota gratuita de Firestore en pocas horas. Por eso estas
+  // tres se difieren y solo se activan una vez, la primera vez que alguien
+  // inicia sesión (ver iniciarSuscripcionesPesadas más abajo).
+  let suscripcionesPesadasActivas = false;
+  function iniciarSuscripcionesPesadas(){
+    if (suscripcionesPesadasActivas) return;
+    suscripcionesPesadasActivas = true;
 
-  onSnapshot(colDesignados, (snap) => {
-    DESIGNATION_LOG.length = 0;
-    snap.docs.forEach(d => DESIGNATION_LOG.push(d.data()));
-  }, (err) => console.error('Error escuchando designados:', err));
+    onSnapshot(colAsistencias, (snap) => {
+      ATTENDANCE_LOG.length = 0;
+      snap.docs.forEach(d => ATTENDANCE_LOG.push(d.data()));
+      liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
+    }, (err) => console.error('Error escuchando asistencias:', err));
 
-  onSnapshot(colEncuestasABI, (snap) => {
-    ABI_SURVEYS.length = 0;
-    snap.docs.forEach(d => ABI_SURVEYS.push({ id: d.id, ...d.data() }));
-  }, (err) => console.error('Error escuchando encuestas ABI:', err));
+    onSnapshot(colDesignados, (snap) => {
+      DESIGNATION_LOG.length = 0;
+      snap.docs.forEach(d => DESIGNATION_LOG.push(d.data()));
+      liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
+    }, (err) => console.error('Error escuchando designados:', err));
+
+    onSnapshot(colEncuestasABI, (snap) => {
+      ABI_SURVEYS.length = 0;
+      snap.docs.forEach(d => ABI_SURVEYS.push({ id: d.id, ...d.data() }));
+    }, (err) => console.error('Error escuchando encuestas ABI:', err));
+  }
 
   const ALL_RUTINAS = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC', 'Cambio de turno', 'Entrenamiento OL', 'Diaria Logística'];
   const ALL_PILARES = ['Seguridad', 'Reparto', 'Gestión', 'People', 'Almacén', 'Flota'];
@@ -1746,6 +1768,9 @@
     if (found && found.pass === p) {
       err.classList.remove('show');
       currentUser = found;
+      // Recién AHORA (con sesión iniciada) hacen falta las colecciones pesadas
+      // de historial — ver la nota junto a iniciarSuscripcionesPesadas más arriba.
+      iniciarSuscripcionesPesadas();
 
       if (found.admin || found.reportOnly) {
         document.getElementById('adminName').textContent = found.name;
@@ -3424,7 +3449,10 @@
   // dispositivo), se vuelve a pintar SOLO la tabla que esté visible en ese
   // momento, sin tocar el resto de la lógica de UI ya existente.
   // ============================================================================
-  liveRefreshCallbacks.people.push(() => {
+  // Compartido entre cambios de "colaboradores" y de "asistencias"/"designados":
+  // ambos tipos de cambio pueden afectar lo que se ve en Adherencia o en las
+  // estadísticas del líder, así que ambos disparan el mismo refresco.
+  function refrescarVistaAdminYLider(){
     if (!screenAdmin.hidden){
       const activeTab = document.querySelector('.admin-tab.active');
       const tabId = activeTab ? activeTab.dataset.tab : null;
@@ -3437,8 +3465,11 @@
     }
     if (!screenLeader.hidden && leaderState.rutina && currentUser){
       updateLeaderStats(currentUser.cd);
+      if (typeof renderYaRegistradosHoy === 'function') renderYaRegistradosHoy();
     }
-  });
+  }
+  liveRefreshCallbacks.people.push(refrescarVistaAdminYLider);
+  liveRefreshCallbacks.asistencias.push(refrescarVistaAdminYLider);
 
   liveRefreshCallbacks.users.push(() => {
     if (!screenAdmin.hidden){

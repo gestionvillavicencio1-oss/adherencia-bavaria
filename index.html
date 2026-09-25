@@ -524,6 +524,33 @@
   }
   .photo-bar-text b{display:block; font-size:14px; margin-bottom:2px;}
   .photo-bar-text span{font-size:12px; color:var(--text-faint);}
+  .photo-bar-thumb{
+    width:52px; height:52px; border-radius:10px; object-fit:cover; border:1.5px solid var(--border); flex-shrink:0; cursor:pointer;
+  }
+
+  /* ============ Panel "ya registrados hoy" (solo lectura) ============ */
+  .registrados-panel{
+    background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:20px 22px; margin-top:20px;
+  }
+  .registrados-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+  .registrados-title{ font-family:'Fraunces',Georgia,serif; font-size:16px; font-weight:600; }
+  .registrados-count{
+    font-size:12.5px; font-weight:700; color:var(--gold); background:rgba(232,185,35,0.1);
+    border:1px solid rgba(232,185,35,0.3); border-radius:100px; padding:5px 14px; white-space:nowrap;
+  }
+  .registrados-list{ display:flex; flex-direction:column; gap:1px; max-height:280px; overflow-y:auto; border-radius:10px; overflow-x:hidden; }
+  .registrados-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px;
+    background:var(--surface-2); font-size:13px;
+  }
+  .registrados-row .rr-name{ display:flex; align-items:center; gap:8px; }
+  .registrados-row .rr-badge{
+    width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  }
+  .registrados-row .rr-badge.ok{ background:#7cd68a; }
+  .registrados-row .rr-badge.late{ background:var(--gold); }
+  .registrados-row .rr-time{ font-size:11.5px; color:var(--text-faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .registrados-empty{ font-size:13px; color:var(--text-faint); padding:14px 4px; text-align:center; }
   .btn-camera{
     background:linear-gradient(135deg,var(--gold-2),var(--gold)); color:#0a0604; border:none; border-radius:11px;
     padding:11px 20px; font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer;
@@ -1353,13 +1380,24 @@
 
     <div class="photo-bar">
       <div class="photo-bar-text">
-        <b>Evidencia fotográfica de la rutina</b>
-        <span>Solo cámara en vivo — no se permite subir desde galería.</span>
+        <b>Evidencia fotográfica de la rutina (opcional)</b>
+        <span id="photoBarSub">Solo cámara en vivo — no se permite subir desde galería.</span>
       </div>
+      <img class="photo-bar-thumb" id="photoBarThumb" hidden alt="Evidencia ya guardada hoy">
       <button class="btn-camera" id="btnCamera">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        Tomar foto
+        <span id="btnCameraLabel">Tomar foto</span>
       </button>
+    </div>
+
+    <div class="registrados-panel">
+      <div class="registrados-head">
+        <div class="registrados-title">Ya registrados hoy</div>
+        <div class="registrados-count" id="registradosCount">0 de 0</div>
+      </div>
+      <div class="registrados-list" id="registradosList">
+        <div class="registrados-empty">Nadie registrado todavía en esta rutina.</div>
+      </div>
     </div>
 
     <div class="scan-overlay" id="photoOverlay" hidden>
@@ -3261,6 +3299,7 @@
     logDesignations(rutina, user.cd, personsForLeaderRutina(rutina, user.cd));
     renderLeaderTable(user.cd, '');
     updateLeaderStats(user.cd);
+    refrescarFotoBar();
   }
 
   // La marcación de asistencia ahora es EXCLUSIVAMENTE por escaneo de QR
@@ -3278,6 +3317,47 @@
     document.getElementById('statOk').textContent = ok;
     document.getElementById('statLate').textContent = late;
     document.getElementById('statPending').textContent = Math.max(total - ok - late, 0);
+    renderYaRegistradosHoy();
+  }
+
+  // ================= Panel "ya registrados hoy" (solo lectura) =================
+  // Lista, para la rutina/turno/CD activos, quién ya marcó asistencia HOY —
+  // pensado para que un supervisor que llega a relevar a otro (o que vuelve a
+  // escanear después de un rato) vea de un vistazo quién falta sin tener que
+  // preguntar. Se arma en memoria a partir de ATTENDANCE_LOG (ya sincronizado
+  // por onSnapshot desde el login) — no hace ninguna lectura nueva a Firestore.
+  function renderYaRegistradosHoy(){
+    const listEl = document.getElementById('registradosList');
+    const countEl = document.getElementById('registradosCount');
+    if (!listEl || !countEl || !currentUser || !leaderState.rutina) return;
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const cd = currentUser.cd;
+    const rutina = leaderState.rutina;
+    const designados = personsForLeaderRutina(rutina, cd);
+    const idsDesignados = new Set(designados.map(p => p.id));
+
+    let registros = ATTENDANCE_LOG.filter(r => r.cd === cd && r.rutina === rutina && r.fecha === hoy);
+    // Si la rutina usa turnos rotativos, solo cuenta contra el turno activo —
+    // se filtra contra la lista de designados del turno (que ya viene filtrada).
+    if (leaderState.usaTurnos){
+      registros = registros.filter(r => idsDesignados.has(r.personId));
+    }
+    // Ordenados por hora de marcación, más reciente primero.
+    registros = [...registros].sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+
+    countEl.textContent = `${registros.length} de ${designados.length}`;
+
+    if (!registros.length){
+      listEl.innerHTML = '<div class="registrados-empty">Nadie registrado todavía en esta rutina.</div>';
+      return;
+    }
+    listEl.innerHTML = registros.map(r => `
+      <div class="registrados-row">
+        <div class="rr-name"><span class="rr-badge ${r.status === 'ok' ? 'ok' : 'late'}"></span>${r.nombre || r.personId}</div>
+        <span class="rr-time">${r.time || '—'}</span>
+      </div>
+    `).join('');
   }
 
   // ================= Evidencia fotográfica de la rutina =================
@@ -3290,12 +3370,66 @@
   const colEvidencias = collection(db, 'evidenciasFoto');
   let photoStream = null;
   let photoCapturedDataUrl = null;
+  let evidenciaGuardadaHoy = null; // { imagenBase64, hora } de la evidencia ya guardada para la rutina/cd/fecha activos
 
   function setPhotoStatus(msg, kind){
     const el = document.getElementById('photoStatus');
     el.textContent = msg;
     el.className = 'scan-status' + (kind ? ' ' + kind : '');
   }
+
+  // Consulta puntual (getDoc, no listener) a evidenciasFoto para la rutina/CD/fecha
+  // activos, y actualiza la miniatura en la barra de foto. Se llama solo al cambiar
+  // de rutina o justo después de guardar/repetir una evidencia — nunca en vivo — para
+  // no sumar lecturas de más (ver el fix de cuota de Firestore ya aplicado).
+  async function refrescarFotoBar(){
+    const thumb = document.getElementById('photoBarThumb');
+    const sub = document.getElementById('photoBarSub');
+    const label = document.getElementById('btnCameraLabel');
+    evidenciaGuardadaHoy = null;
+    thumb.hidden = true;
+    if (!currentUser || !leaderState.rutina){
+      sub.textContent = 'Solo cámara en vivo — no se permite subir desde galería.';
+      label.textContent = 'Tomar foto';
+      return;
+    }
+    const fecha = new Date().toISOString().slice(0, 10);
+    const idEvidencia = `${currentUser.cd}_${leaderState.rutina}_${fecha}`;
+    try {
+      const snap = await getDoc(doc(colEvidencias, idEvidencia));
+      if (snap.exists()){
+        const data = snap.data();
+        evidenciaGuardadaHoy = data;
+        thumb.src = data.imagenBase64;
+        thumb.hidden = false;
+        sub.textContent = `Ya guardada hoy a las ${data.hora || '—'} · toca la miniatura para verla en grande.`;
+        label.textContent = 'Repetir foto';
+      } else {
+        sub.textContent = 'Solo cámara en vivo — no se permite subir desde galería.';
+        label.textContent = 'Tomar foto';
+      }
+    } catch (e) {
+      // Fallo de lectura silencioso: no bloquea el flujo, solo no se muestra miniatura.
+      sub.textContent = 'Solo cámara en vivo — no se permite subir desde galería.';
+      label.textContent = 'Tomar foto';
+    }
+  }
+
+  document.getElementById('photoBarThumb').addEventListener('click', () => {
+    if (!evidenciaGuardadaHoy) return;
+    const overlay = document.getElementById('photoOverlay');
+    const video = document.getElementById('photoVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const preview = document.getElementById('photoPreview');
+    overlay.hidden = false;
+    video.hidden = true;
+    canvas.hidden = true;
+    preview.src = evidenciaGuardadaHoy.imagenBase64;
+    preview.hidden = false;
+    document.getElementById('photoActions').hidden = true;
+    document.getElementById('photoConfirmActions').hidden = true;
+    setPhotoStatus(`Evidencia guardada hoy a las ${evidenciaGuardadaHoy.hora || '—'}.`, 'ok');
+  });
 
   async function abrirCamaraFoto(){
     const overlay = document.getElementById('photoOverlay');
@@ -3427,6 +3561,7 @@
         imagenBase64: photoCapturedDataUrl,
       });
       setPhotoStatus('✓ Evidencia guardada.', 'ok');
+      refrescarFotoBar();
       setTimeout(cerrarCamaraFoto, 700);
     } catch (err) {
       console.error('No se pudo guardar la evidencia fotográfica:', err);

@@ -1114,6 +1114,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="adhpBuscar" placeholder="Buscar por nombre o cédula...">
         </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
+          <input type="text" id="adhpFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta
+          <input type="text" id="adhpFechaHasta" placeholder="AAAA-MM-DD" style="width:120px;">
+        </label>
+        <button class="btn-secondary" id="btnAdhpLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Limpiar fechas</button>
       </div>
       <div class="adhp-summary" id="adhpSummary"></div>
       <div class="table-wrap">
@@ -2622,6 +2629,13 @@
       sel.addEventListener('change', renderAdherenciaPorPersona);
     });
     document.getElementById('adhpBuscar').addEventListener('input', renderAdherenciaPorPersona);
+    document.getElementById('adhpFechaDesde').addEventListener('change', renderAdherenciaPorPersona);
+    document.getElementById('adhpFechaHasta').addEventListener('change', renderAdherenciaPorPersona);
+    document.getElementById('btnAdhpLimpiarFechas').addEventListener('click', () => {
+      document.getElementById('adhpFechaDesde').value = '';
+      document.getElementById('adhpFechaHasta').value = '';
+      renderAdherenciaPorPersona();
+    });
     rutinaSel.dataset.filled = '1';
   }
 
@@ -2631,21 +2645,29 @@
     const fGrupo = document.getElementById('adhpGrupo').value;
     const fSemaforo = document.getElementById('adhpSemaforo').value;
     const q = document.getElementById('adhpBuscar').value.trim().toLowerCase();
+    const fDesde = document.getElementById('adhpFechaDesde').value.trim();
+    const fHasta = document.getElementById('adhpFechaHasta').value.trim();
 
     // Designados reales: una sesión = (rutina, fecha) única en la que la persona estaba en la lista.
     // Asistió: hay al menos una marca (a tiempo o tarde) de esa persona en esa misma (rutina, fecha).
-    const desigCD = DESIGNATION_LOG.filter(r => r.cd === selectedCD && (!fRutina || r.rutina === fRutina));
-    const asisCD = ATTENDANCE_LOG.filter(r => r.cd === selectedCD && (!fRutina || r.rutina === fRutina));
+    // IMPORTANTE (igual que en la pestaña "Adherencia"): no toda asistencia real tiene primero una
+    // designación (por ejemplo si el líder abrió la rutina en otro turno ese día), así que las
+    // sesiones se arman con la UNIÓN de ambos registros para no ocultar ninguna asistencia real.
+    const desigCD = DESIGNATION_LOG.filter(r => r.cd === selectedCD && (!fRutina || r.rutina === fRutina) && fechaEnRango(r.fecha, fDesde, fHasta));
+    const asisCD = ATTENDANCE_LOG.filter(r => r.cd === selectedCD && (!fRutina || r.rutina === fRutina) && fechaEnRango(r.fecha, fDesde, fHasta));
 
     const asisKeySet = new Set(asisCD.map(a => a.personId + '|' + a.rutina + '|' + a.fecha));
 
     const porPersona = {};
+    const getEntry = (personId, nombre, cargo, grupo) => {
+      if (!porPersona[personId]) {
+        porPersona[personId] = { personId, nombre, cargo, grupo, designado: 0, asistio: 0, sesionesVistas: new Set(), detalle: [] };
+      }
+      return porPersona[personId];
+    };
     desigCD.forEach(d => {
       const key = d.personId + '|' + d.rutina + '|' + d.fecha;
-      if (!porPersona[d.personId]) {
-        porPersona[d.personId] = { personId: d.personId, nombre: d.nombre, cargo: d.cargo, grupo: d.grupo, designado: 0, asistio: 0, sesionesVistas: new Set(), detalle: [] };
-      }
-      const entry = porPersona[d.personId];
+      const entry = getEntry(d.personId, d.nombre, d.cargo, d.grupo);
       if (entry.sesionesVistas.has(key)) return; // por si acaso, no duplicar la misma sesión
       entry.sesionesVistas.add(key);
       entry.designado++;
@@ -2655,6 +2677,18 @@
       // donde la rutina/turno asignado puede variar semana a semana: así se ve exactamente
       // qué se le asignó y si asistió, sesión por sesión, no solo el total agregado.
       entry.detalle.push({ rutina: d.rutina, fecha: d.fecha, asistio });
+    });
+    // Asistencias reales sin designación previa (persona asistió pero no quedó
+    // "fotografiada" como designada ese día/rutina): cuentan igual como una
+    // sesión asistida, para que ninguna asistencia real quede fuera del semáforo.
+    asisCD.forEach(a => {
+      const key = a.personId + '|' + a.rutina + '|' + a.fecha;
+      const entry = getEntry(a.personId, a.nombre, a.cargo, a.grupo);
+      if (entry.sesionesVistas.has(key)) return;
+      entry.sesionesVistas.add(key);
+      entry.designado++;
+      entry.asistio++;
+      entry.detalle.push({ rutina: a.rutina, fecha: a.fecha, asistio: true });
     });
     Object.values(porPersona).forEach(p => p.detalle.sort((a, b) => (b.fecha).localeCompare(a.fecha)));
 

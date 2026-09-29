@@ -180,15 +180,30 @@
   .field{margin-bottom:18px;}
   .field label{ display:block; font-size:12px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; }
   .input-wrap{ position:relative; display:flex; align-items:center; }
-  .input-wrap svg{ position:absolute; left:15px; width:17px;height:17px; color:var(--text-faint); pointer-events:none; }
+  /* Ojo: ">" (hijo directo) y no descendiente en general — si no, esta regla también
+     capturaba el <svg> del botón "Mostrar contraseña" (anidado un nivel más adentro,
+     dentro de .toggle-pass) y lo movía a la izquierda, encima del candado, dejando el
+     botón de la derecha sin ícono visible aunque siguiera funcionando al hacer clic. */
+  .input-wrap > svg{ position:absolute; left:15px; width:17px;height:17px; color:var(--text-faint); pointer-events:none; }
   input[type="text"], input[type="password"], input[type="search"]{
     width:100%; background:var(--surface-2); border:1.5px solid var(--border); border-radius:11px;
     padding:13px 14px 13px 42px; font-size:14.5px; color:var(--text); font-family:inherit;
     transition:border-color .15s ease, box-shadow .15s ease;
   }
+  /* Campos de fecha (calendario nativo del navegador): mismo estilo que los de texto,
+     pero sin el hueco de 42px a la izquierda porque no llevan ícono adelante. */
+  input[type="date"]{
+    background:var(--surface-2); border:1.5px solid var(--border); border-radius:11px;
+    padding:9px 10px; font-size:13px; color:var(--text); font-family:inherit;
+    transition:border-color .15s ease, box-shadow .15s ease; color-scheme:dark;
+  }
+  input[type="date"]:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(232,185,35,0.15); }
+  input[type="date"]::-webkit-calendar-picker-indicator{ cursor:pointer; opacity:.75; }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover{ opacity:1; }
   input::placeholder{color:var(--text-faint);}
   input:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(232,185,35,0.15); }
-  .toggle-pass{ position:absolute; right:13px; background:none; border:none; color:var(--text-faint); cursor:pointer; padding:4px; display:flex; }
+  input#pass{ padding-right:42px; } /* deja libre el hueco donde va el botón de ver contraseña */
+  .toggle-pass{ position:absolute; right:13px; background:none; border:none; color:var(--text-faint); cursor:pointer; padding:4px; display:flex; z-index:1; }
   .toggle-pass:hover{color:var(--text-dim);}
   .toggle-pass svg{width:17px;height:17px;}
   .row-between{ display:flex; align-items:center; justify-content:space-between; margin:2px 0 26px; }
@@ -1162,7 +1177,7 @@
         <div class="section-title">Turnos rotativos A/B/C — Cambio de Turno</div>
         <div class="filters">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Día
-            <input type="text" id="turnosFecha" placeholder="AAAA-MM-DD" style="width:130px;">
+            <input type="date" id="turnosFecha" style="width:130px;">
           </label>
           <button class="btn-secondary" id="btnTurnosHoy" style="flex:none; padding:8px 14px; font-size:12px;">Hoy</button>
         </div>
@@ -1210,10 +1225,10 @@
           <option value="C">Turno C</option>
         </select>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
-          <input type="text" id="adhFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhFechaDesde" style="width:120px;">
         </label>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta
-          <input type="text" id="adhFechaHasta" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhFechaHasta" style="width:120px;">
         </label>
         <button class="btn-secondary" id="btnAdhLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Limpiar fechas</button>
       </div>
@@ -1260,7 +1275,7 @@
         </div>
         <div class="descanso-card-row">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha a la que aplica
-            <input type="text" id="descansoFecha" placeholder="AAAA-MM-DD" style="width:130px;">
+            <input type="date" id="descansoFecha" style="width:130px;">
           </label>
           <input type="file" id="descansoFileInput" accept=".xlsx,.xls" style="display:none;">
           <button class="btn-secondary" id="btnDescansoElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
@@ -1284,10 +1299,10 @@
           <input type="text" id="adhpBuscar" placeholder="Buscar por nombre o cédula...">
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
-          <input type="text" id="adhpFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhpFechaDesde" style="width:120px;">
         </label>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta
-          <input type="text" id="adhpFechaHasta" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhpFechaHasta" style="width:120px;">
         </label>
         <button class="btn-secondary" id="btnAdhpLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Limpiar fechas</button>
       </div>
@@ -1318,7 +1333,7 @@
         </div>
         <div class="descanso-card-row">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Vigente desde
-            <input type="text" id="nominasFecha" placeholder="AAAA-MM-DD" style="width:130px;">
+            <input type="date" id="nominasFecha" style="width:130px;">
           </label>
           <input type="file" id="nominasFileInput" accept=".xlsx,.xls" style="display:none;">
           <button class="btn-secondary" id="btnNominasElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
@@ -1329,10 +1344,10 @@
 
       <div class="adh-filters">
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
-          <input type="text" id="adhrFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhrFechaDesde" style="width:120px;">
         </label>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta
-          <input type="text" id="adhrFechaHasta" placeholder="AAAA-MM-DD" style="width:120px;">
+          <input type="date" id="adhrFechaHasta" style="width:120px;">
         </label>
         <button class="btn-secondary" id="btnAdhrLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Últimos 10 días hábiles</button>
       </div>

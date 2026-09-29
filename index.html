@@ -696,8 +696,22 @@
   .adhp-dot.amarillo{background:#f3d25a; box-shadow:0 0 0 3px rgba(243,210,90,0.18);}
   .adhp-dot.naranja{background:#e88a23; box-shadow:0 0 0 3px rgba(232,138,35,0.18);}
   .adhp-dot.rojo{background:#e8432f; box-shadow:0 0 0 3px rgba(232,67,47,0.18);}
-  .adhp-card .adhp-num{font-family:'Fraunces',serif; font-size:24px; font-weight:600;}
+  .adhp-card .adhp-num{font-family:'Fraunces',serif; font-size:24px; font-weight:600; display:flex; align-items:baseline; gap:7px;}
+  .adhp-card .adhp-pct{font-family:inherit; font-size:13px; font-weight:600; color:var(--text-faint);}
   .adhp-card .adhp-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;}
+
+  /* Racha positiva (días consecutivos cumpliendo, incluye Descanso Efectivo) */
+  .adhp-racha-summary{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;}
+  @media (max-width:1000px){ .adhp-racha-summary{grid-template-columns:1fr;} }
+  .adhp-racha-card{background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 18px; display:flex; align-items:center; gap:12px;}
+  .adhp-racha-badge{width:38px; height:38px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px;}
+  .adhp-racha-badge.b10{background:rgba(205,127,50,0.16); border:1.5px solid rgba(205,127,50,0.4);}
+  .adhp-racha-badge.b20{background:rgba(192,192,192,0.16); border:1.5px solid rgba(192,192,192,0.45);}
+  .adhp-racha-badge.b30{background:rgba(232,185,35,0.18); border:1.5px solid rgba(232,185,35,0.5);}
+  .racha-badge-pill{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:100px; font-size:11px; font-weight:700; white-space:nowrap;}
+  .racha-badge-pill.b10{background:rgba(205,127,50,0.14); border:1px solid rgba(205,127,50,0.4); color:#cd7f32;}
+  .racha-badge-pill.b20{background:rgba(192,192,192,0.14); border:1px solid rgba(192,192,192,0.45); color:#c0c0c0;}
+  .racha-badge-pill.b30{background:rgba(232,185,35,0.16); border:1px solid rgba(232,185,35,0.5); color:var(--gold);}
   .semaforo-pill{
     display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:100px; font-size:11.5px; font-weight:700;
   }
@@ -731,6 +745,26 @@
   .adhr-col-label{font-size:10px; color:var(--text-faint); margin-top:6px; text-align:center;}
   .adhr-day-label{font-size:11.5px; color:var(--text-dim); margin-top:10px; font-weight:600; text-align:center;}
   .adhr-day-total{font-size:10px; color:var(--text-faint); margin-top:1px;}
+  .adhr-seg{ cursor:pointer; display:flex; align-items:center; justify-content:center; position:relative; }
+  .adhr-seg-num{ font-size:10px; font-weight:700; color:rgba(0,0,0,0.62); text-shadow:0 1px 1px rgba(255,255,255,0.25); pointer-events:none; }
+  .adhr-seg:hover{ filter:brightness(1.12); outline:1.5px solid rgba(255,255,255,0.5); outline-offset:-1px; }
+  .adhr-avg-summary{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:1000px){ .adhr-avg-summary{grid-template-columns:1fr;} }
+  .adhr-avg-card{background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:14px 18px; display:flex; align-items:center; gap:12px;}
+  .adhr-avg-dot{width:13px;height:13px;border-radius:4px; flex-shrink:0;}
+  .adhr-avg-dot.asistio{background:#7cd68a;} .adhr-avg-dot.excusa{background:#8ab4f8;} .adhr-avg-dot.falto{background:#e8432f;}
+  .adhr-avg-num{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
+  .adhr-avg-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;}
+  .adhr-detail{ margin-top:20px; background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 18px; }
+  .adhr-detail-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+  .adhr-detail-title{ font-size:14px; font-weight:700; }
+  .adhr-detail-sub{ font-size:12px; color:var(--text-faint); margin-top:2px; }
+  .adhr-top-wrap{ margin-top:24px; }
+  .adhr-top-row{ display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); font-size:13px; }
+  .adhr-top-row:last-child{ border-bottom:none; }
+  .adhr-top-rank{ width:22px; flex-shrink:0; color:var(--text-faint); font-weight:700; font-size:12px; }
+  .adhr-top-name{ flex:1; min-width:0; }
+  .adhr-top-count{ font-weight:700; color:#e8432f; flex-shrink:0; }
   .adhr-tooltip-num{font-size:9.5px; color:var(--text-faint);}
   .adhp-row:hover{background:rgba(232,185,35,0.04);}
   .adhp-caret{transition:transform .12s ease; color:var(--text-faint);}
@@ -1264,7 +1298,7 @@
       <div class="section-head">
         <div class="section-title">Adherencia por persona</div>
       </div>
-      <p class="adh-note">Por cada colaborador se evalúa, día por día, si asistió a <b>al menos una</b> de sus rutinas posibles (según su Grupo) — no si fue a todas. Solo cuentan los días en que realmente hubo una rutina operando para su grupo (si un día no hubo ninguna rutina abierta, ese día no cuenta ni suma ni corta la racha). <b>Racha actual</b> = días operativos seguidos, contando desde el más reciente, sin ninguna asistencia. <b>Verde</b> = 0 · <b>Amarillo</b> = 1 · <b>Naranja</b> = 2 · <b>Rojo</b> = 3 o más días seguidos sin asistir a nada — alerta. Un día marcado <b>Descanso Efectivo</b> (UC, cuando el colaborador quedó disponible a las 6:05 a.m. o después, según la plantilla de descanso) tampoco cuenta ni suma ni corta la racha.</p>
+      <p class="adh-note">Por cada colaborador se evalúa, día por día, si asistió a <b>al menos una</b> de sus rutinas posibles (según su Grupo) — no si fue a todas. Solo cuentan los días en que realmente hubo una rutina operando para su grupo (si un día no hubo ninguna rutina abierta, ese día no cuenta ni suma ni corta la racha). Los colaboradores de <b>UC</b> solo aparecen aquí si siguen asignados a Población o Metro en la última carga de NOMINAS (coherente con "Adherencia real por ruta"); OL y ABI no se filtran por esto. <b>Racha actual</b> = días operativos seguidos, contando desde el más reciente, sin ninguna asistencia — un día con <b>Descanso Efectivo</b> ni suma ni corta esta racha (se salta). <b>Verde</b> = 0 · <b>Amarillo</b> = 1 · <b>Naranja</b> = 2 · <b>Rojo</b> = 3 o más días seguidos sin asistir a nada — alerta. <b>Racha cumpliendo</b> = lo contrario: días seguidos, contando desde el más reciente, en los que SÍ cumplió — aquí un día con Descanso Efectivo <b>sí cuenta</b> como día cumplido. Al llegar a 10, 20 o 30 días seguidos cumpliendo, la persona recibe una insignia 🥉🥈🥇.</p>
 
       <div class="descanso-card">
         <div class="descanso-card-head">
@@ -1294,6 +1328,12 @@
           <option value="amarillo">Amarillo (1)</option>
           <option value="verde">Verde (0)</option>
         </select>
+        <select id="adhpRachaTier">
+          <option value="">Cualquier racha de días cumpliendo</option>
+          <option value="30">30+ días seguidos</option>
+          <option value="20">20+ días seguidos</option>
+          <option value="10">10+ días seguidos</option>
+        </select>
         <div class="input-wrap" style="width:220px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="adhpBuscar" placeholder="Buscar por nombre o cédula...">
@@ -1307,10 +1347,11 @@
         <button class="btn-secondary" id="btnAdhpLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Limpiar fechas</button>
       </div>
       <div class="adhp-summary" id="adhpSummary"></div>
+      <div class="adhp-racha-summary" id="adhpRachaSummary"></div>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th></th><th>Colaborador</th><th>Cédula</th><th>Cargo</th><th>Días operativos</th><th>Días cumplidos</th><th>Racha actual</th><th>Semáforo</th></tr>
+            <tr><th></th><th>Colaborador</th><th>Cédula</th><th>Cargo</th><th>Días operativos</th><th>Días cumplidos</th><th>Racha actual</th><th>Racha cumpliendo</th><th>Semáforo</th></tr>
           </thead>
           <tbody id="adhpBody"></tbody>
         </table>
@@ -1343,6 +1384,11 @@
       </div>
 
       <div class="adh-filters">
+        <select id="adhrZona">
+          <option value="ambas">Población y Metro</option>
+          <option value="Poblaciones">Solo Población</option>
+          <option value="Metro">Solo Metro</option>
+        </select>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
           <input type="date" id="adhrFechaDesde" style="width:120px;">
         </label>
@@ -1351,8 +1397,11 @@
         </label>
         <button class="btn-secondary" id="btnAdhrLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Últimos 10 días hábiles</button>
       </div>
+      <div class="adhr-avg-summary" id="adhrAvgSummary"></div>
       <div id="adhrChartWrap"></div>
-      <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes).</p>
+      <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes). Haz clic en cualquier segmento de una barra para ver el detalle de personas de ese día/zona/categoría.</p>
+      <div class="adhr-detail" id="adhrDetail" style="display:none;"></div>
+      <div class="adhr-top-wrap" id="adhrTopWrap"></div>
     </div>
 
     <!-- =============== TAB: Encuestas ABI =============== -->
@@ -3209,7 +3258,7 @@
     if (rutinaSel.dataset.filled) return;
     rutinaSel.innerHTML = '<option value="">Todas las rutinas</option>' + ALL_RUTINAS.map(r => `<option value="${r}">${r}</option>`).join('');
     grupoSel.innerHTML = '<option value="">Todos los grupos</option>' + ALL_GRUPOS.map(g => `<option value="${g}">${g}</option>`).join('');
-    [rutinaSel, grupoSel, document.getElementById('adhpSemaforo')].forEach(sel => {
+    [rutinaSel, grupoSel, document.getElementById('adhpSemaforo'), document.getElementById('adhpRachaTier')].forEach(sel => {
       sel.addEventListener('change', renderAdherenciaPorPersona);
     });
     document.getElementById('adhpBuscar').addEventListener('input', renderAdherenciaPorPersona);
@@ -3411,9 +3460,21 @@
     const fRutina = document.getElementById('adhpRutina').value;
     const fGrupo = document.getElementById('adhpGrupo').value;
     const fSemaforo = document.getElementById('adhpSemaforo').value;
+    const fRachaTier = +document.getElementById('adhpRachaTier').value || 0;
     const q = document.getElementById('adhpBuscar').value.trim().toLowerCase();
     const fDesde = document.getElementById('adhpFechaDesde').value.trim();
     const fHasta = document.getElementById('adhpFechaHasta').value.trim();
+
+    // Personas UC con asignación real vigente HOY (según la última carga de NOMINAS
+    // — ver "Adherencia real por ruta"): un colaborador de grupo UC solo aparece en
+    // esta tabla si sigue asignado a Población o Metro en esa versión, para que la
+    // lista sea coherente con esa otra vista (misma fuente de verdad). Si todavía no
+    // se ha subido ninguna versión de NOMINAS para este CD, no se filtra nada (se
+    // sigue mostrando todo el grupo UC, igual que antes) para no vaciar la tabla de
+    // golpe antes de la primera carga. OL y ABI nunca se filtran por esto.
+    const hoyParaAsignacion = new Date().toISOString().slice(0, 10);
+    const versionVigenteHoy = asignacionVigenteEnFecha(selectedCD, hoyParaAsignacion);
+    const ucAsignadosHoySet = versionVigenteHoy ? new Set(versionVigenteHoy.personas.map(p => p.personId)) : null;
 
     // Solo cuentan las sesiones cuya rutina sea una de las posibles para el GRUPO
     // registrado en ese renglón (RUTINAS_POR_GRUPO) — así, aunque queden datos
@@ -3489,44 +3550,80 @@
     // las rutinas UC) tampoco afecta la racha: ni la corta ni la suma — se salta,
     // igual que un día sin rutina activa — pero SÍ queda en el detalle para que se
     // pueda auditar por qué no cuenta.
-    const todasFilas = Object.values(porPersona).map(p => {
+    const todasFilas = Object.values(porPersona)
+      // Un colaborador UC sin asignación vigente en NOMINAS (ver ucAsignadosHoySet
+      // arriba) no aparece en esta tabla — coherente con "Adherencia real por ruta".
+      .filter(p => !(p.grupo === 'UC' && ucAsignadosHoySet && !ucAsignadosHoySet.has(p.personId)))
+      .map(p => {
       const dias = [...p.diasMap.values()].sort((a, b) => b.fecha.localeCompare(a.fecha)); // más reciente primero
       dias.forEach(d => { if (!d.asistioAlguna && descansoSet.has(p.personId + '|' + d.fecha)) d.descanso = true; });
+      // Racha actual (negativa): días operativos consecutivos, desde el más
+      // reciente hacia atrás, SIN asistir a ninguna rutina. Un día de Descanso
+      // Efectivo no la corta ni la suma — se salta, igual que un día sin rutina
+      // activa — pero sí queda en el detalle para auditar por qué no cuenta.
       let racha = 0;
       for (const d of dias){
         if (d.descanso) continue;
         if (d.asistioAlguna) break;
         racha++;
       }
+      // Racha positiva ("racha cumpliendo"): días consecutivos, desde el más
+      // reciente hacia atrás, en los que la persona SÍ cumplió — asistió a
+      // alguna rutina O tuvo excusa de Descanso Efectivo ese día (a diferencia
+      // de la racha actual, aquí el Descanso Efectivo SÍ cuenta como día
+      // cumplido, no se salta: pedido explícito — "si tiene excusa de descanso
+      // efectivo sigue contando"). Se corta en el primer día, yendo hacia
+      // atrás, en que no asistió y tampoco tuvo excusa.
+      let rachaPositiva = 0;
+      for (const d of dias){
+        const cumplioDia = d.asistioAlguna || d.descanso;
+        if (!cumplioDia) break;
+        rachaPositiva++;
+      }
+      const hitoRacha = rachaPositiva >= 30 ? 30 : rachaPositiva >= 20 ? 20 : rachaPositiva >= 10 ? 10 : 0;
       const diasContables = dias.filter(d => !d.descanso);
       const diasCumplidos = diasContables.filter(d => d.asistioAlguna).length;
       const diasDescanso = dias.length - diasContables.length;
       return {
         personId: p.personId, nombre: p.nombre, cargo: p.cargo, grupo: p.grupo,
         dias, diasOperativos: diasContables.length, diasCumplidos, diasDescanso, racha, semaforo: semaforoDe(racha),
+        rachaPositiva, hitoRacha,
       };
     });
 
     const conteo = { rojo: 0, naranja: 0, amarillo: 0, verde: 0 };
     todasFilas.forEach(p => conteo[p.semaforo]++);
+    const totalPersonas = todasFilas.length;
+    const pct = (n) => totalPersonas ? Math.round((n / totalPersonas) * 100) : 0;
 
     document.getElementById('adhpSummary').innerHTML = `
-      <div class="adhp-card"><div class="adhp-dot rojo"></div><div><div class="adhp-num">${conteo.rojo}</div><div class="adhp-label">Rojo (3+)</div></div></div>
-      <div class="adhp-card"><div class="adhp-dot naranja"></div><div><div class="adhp-num">${conteo.naranja}</div><div class="adhp-label">Naranja (2)</div></div></div>
-      <div class="adhp-card"><div class="adhp-dot amarillo"></div><div><div class="adhp-num">${conteo.amarillo}</div><div class="adhp-label">Amarillo (1)</div></div></div>
-      <div class="adhp-card"><div class="adhp-dot verde"></div><div><div class="adhp-num">${conteo.verde}</div><div class="adhp-label">Verde (0)</div></div></div>
+      <div class="adhp-card"><div class="adhp-dot rojo"></div><div><div class="adhp-num">${conteo.rojo}<span class="adhp-pct">(${pct(conteo.rojo)}%)</span></div><div class="adhp-label">Rojo (3+) — en riesgo</div></div></div>
+      <div class="adhp-card"><div class="adhp-dot naranja"></div><div><div class="adhp-num">${conteo.naranja}<span class="adhp-pct">(${pct(conteo.naranja)}%)</span></div><div class="adhp-label">Naranja (2) — en riesgo</div></div></div>
+      <div class="adhp-card"><div class="adhp-dot amarillo"></div><div><div class="adhp-num">${conteo.amarillo}<span class="adhp-pct">(${pct(conteo.amarillo)}%)</span></div><div class="adhp-label">Amarillo (1)</div></div></div>
+      <div class="adhp-card"><div class="adhp-dot verde"></div><div><div class="adhp-num">${conteo.verde}<span class="adhp-pct">(${pct(conteo.verde)}%)</span></div><div class="adhp-label">Verde (0)</div></div></div>
+    `;
+
+    // Resumen de "personas en racha" (días consecutivos cumpliendo): cuenta a
+    // cada persona en el hito más alto que alcanzó (no se duplica entre hitos).
+    const enRacha = { 10: 0, 20: 0, 30: 0 };
+    todasFilas.forEach(p => { if (p.hitoRacha) enRacha[p.hitoRacha]++; });
+    document.getElementById('adhpRachaSummary').innerHTML = `
+      <div class="adhp-racha-card"><div class="adhp-racha-badge b10">🥉</div><div><div class="adhp-num">${enRacha[10]}<span class="adhp-pct">(${pct(enRacha[10])}%)</span></div><div class="adhp-label">10+ días seguidos cumpliendo</div></div></div>
+      <div class="adhp-racha-card"><div class="adhp-racha-badge b20">🥈</div><div><div class="adhp-num">${enRacha[20]}<span class="adhp-pct">(${pct(enRacha[20])}%)</span></div><div class="adhp-label">20+ días seguidos cumpliendo</div></div></div>
+      <div class="adhp-racha-card"><div class="adhp-racha-badge b30">🥇</div><div><div class="adhp-num">${enRacha[30]}<span class="adhp-pct">(${pct(enRacha[30])}%)</span></div><div class="adhp-label">30+ días seguidos cumpliendo</div></div></div>
     `;
 
     let filas = todasFilas;
     if (fGrupo) filas = filas.filter(p => p.grupo === fGrupo);
     if (fSemaforo) filas = filas.filter(p => p.semaforo === fSemaforo);
+    if (fRachaTier) filas = filas.filter(p => p.rachaPositiva >= fRachaTier);
     if (q) filas = filas.filter(p => p.nombre.toLowerCase().includes(q) || (p.personId||'').toLowerCase().includes(q));
 
     filas.sort((a, b) => b.racha - a.racha || a.nombre.localeCompare(b.nombre));
 
     const tbody = document.getElementById('adhpBody');
     if (filas.length === 0){
-      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Aún no hay sesiones registradas (nadie ha designado/marcado asistencia todavía) para este CD con estos filtros.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">Aún no hay sesiones registradas (nadie ha designado/marcado asistencia todavía) para este CD con estos filtros.</div></td></tr>';
       return;
     }
     tbody.innerHTML = filas.map((p, idx) => {
@@ -3544,6 +3641,10 @@
       }).join('');
       const alerta = p.racha >= 3 ? ' <span class="pill red" style="margin-left:6px; white-space:nowrap;">⚠ Alerta</span>' : '';
       const descansoBadge = p.diasDescanso > 0 ? ` <span class="pill" style="margin-left:4px; background:rgba(138,180,248,0.14); color:#8ab4f8; white-space:nowrap;">+${p.diasDescanso} descanso</span>` : '';
+      const hitoIcono = { 10: '🥉', 20: '🥈', 30: '🥇' }[p.hitoRacha] || '';
+      const rachaPositivaCelda = p.hitoRacha
+        ? `<span class="racha-badge-pill b${p.hitoRacha}">${hitoIcono} ${p.rachaPositiva} días</span>`
+        : `${p.rachaPositiva} días`;
       return `
       <tr class="adhp-row" data-target="${detalleId}" style="cursor:pointer;">
         <td style="width:20px;"><svg class="adhp-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 6 15 12 9 18"/></svg></td>
@@ -3553,11 +3654,12 @@
         <td>${p.diasOperativos}${descansoBadge}</td>
         <td>${p.diasCumplidos}</td>
         <td>${p.racha}${alerta}</td>
+        <td>${rachaPositivaCelda}</td>
         <td><span class="semaforo-pill ${p.semaforo}"><span class="dot"></span>${SEMAFORO_LABEL[p.semaforo]}</span></td>
       </tr>
       <tr id="${detalleId}" class="adhp-detail-group" hidden>
         <td></td>
-        <td colspan="7" style="padding:8px 16px 12px 20px;">
+        <td colspan="8" style="padding:8px 16px 12px 20px;">
           <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;">Historial de días operativos</div>
           ${filasDetalle}
         </td>
@@ -3871,6 +3973,7 @@
     if (desde.dataset.filled) return;
     desde.dataset.filled = '1';
     [desde, document.getElementById('adhrFechaHasta')].forEach(inp => inp.addEventListener('change', renderAdherenciaRuta));
+    document.getElementById('adhrZona').addEventListener('change', renderAdherenciaRuta);
     document.getElementById('btnAdhrLimpiarFechas').addEventListener('click', () => {
       desde.value = '';
       document.getElementById('adhrFechaHasta').value = '';
@@ -3878,24 +3981,38 @@
     });
   }
 
+  // Guarda, por (fecha, zona), el detalle persona-por-persona (id, nombre,
+  // estado) para que el clic en un segmento pueda armar la lista sin volver a
+  // recorrer todo — se recalcula en cada render junto con datosPorDia.
+  let ADHR_DETALLE_CACHE = {};
+
   function renderAdherenciaRuta(){
     setupAdherenciaRutaFiltros();
     setupAsignacionRutaUI();
 
     const fDesde = document.getElementById('adhrFechaDesde').value.trim();
     const fHasta = document.getElementById('adhrFechaHasta').value.trim();
+    const fZona = document.getElementById('adhrZona').value; // 'ambas' | 'Poblaciones' | 'Metro'
     const dias = (fDesde && fHasta) ? rangoDiasHabiles(fDesde, fHasta) : ultimosDiasHabiles(10);
+    const zonasAMostrar = fZona === 'ambas' ? ['Poblaciones', 'Metro'] : [fZona];
 
     const wrap = document.getElementById('adhrChartWrap');
+    const detalleBox = document.getElementById('adhrDetail');
+    detalleBox.style.display = 'none';
+    detalleBox.innerHTML = '';
 
     if (ASIGNACION_RUTA_LOG.filter(v => v.cd === selectedCD).length === 0){
       wrap.innerHTML = '<div class="empty-state">Aún no has cargado ninguna asignación por ruta (NOMINAS) para este CD — sube el Excel arriba para ver el gráfico.</div>';
+      document.getElementById('adhrAvgSummary').innerHTML = '';
+      document.getElementById('adhrTopWrap').innerHTML = '';
       return;
     }
 
     // Descanso Efectivo: personId+fecha con excusa (ya excluye "sin dato" al
     // guardar — ver guardarDescansoEfectivo).
     const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+
+    ADHR_DETALLE_CACHE = {};
 
     // Un día "cuenta" para el gráfico solo si ya había una carga vigente esa
     // fecha (si no, no hay "asignados" que graficar y el día se omite).
@@ -3904,26 +4021,33 @@
       if (!v) return null;
       const resultado = { fecha };
       ['Poblaciones', 'Metro'].forEach(zona => {
-        const asignadosIds = new Set(v.personas.filter(p => p.zona === zona).map(p => p.personId));
+        const asignados = v.personas.filter(p => p.zona === zona);
         let asistieron = 0, excusa = 0;
-        asignadosIds.forEach(personId => {
-          const marco = ATTENDANCE_LOG.some(a => a.cd === selectedCD && a.fecha === fecha && a.personId === personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
-          if (marco){ asistieron++; return; }
-          if (descansoSet.has(personId + '|' + fecha)) excusa++;
+        const detalle = [];
+        asignados.forEach(p => {
+          const marco = ATTENDANCE_LOG.some(a => a.cd === selectedCD && a.fecha === fecha && a.personId === p.personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
+          let estado;
+          if (marco){ asistieron++; estado = 'Asistió'; }
+          else if (descansoSet.has(p.personId + '|' + fecha)){ excusa++; estado = 'Excusa (Descanso Efectivo)'; }
+          else { estado = 'Faltó'; }
+          detalle.push({ personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado });
         });
-        const total = asignadosIds.size;
+        const total = asignados.length;
         const faltaron = Math.max(total - asistieron - excusa, 0);
         resultado[zona] = { total, asistieron, excusa, faltaron };
+        ADHR_DETALLE_CACHE[fecha + '|' + zona] = detalle;
       });
       return resultado;
     }).filter(Boolean);
 
     if (datosPorDia.length === 0){
       wrap.innerHTML = '<div class="empty-state">Ninguno de los días de este rango tiene todavía una asignación vigente (son anteriores a tu primera carga) — ajusta el rango de fechas o carga una versión con vigencia más antigua.</div>';
+      document.getElementById('adhrAvgSummary').innerHTML = '';
+      document.getElementById('adhrTopWrap').innerHTML = '';
       return;
     }
 
-    const maxTotal = Math.max(1, ...datosPorDia.flatMap(d => [d.Poblaciones.total, d.Metro.total]));
+    const maxTotal = Math.max(1, ...datosPorDia.flatMap(d => zonasAMostrar.map(z => d[z].total)));
     const alturaMaxPx = 200;
     // Altura del contenedor de la barra, proporcional a su total frente al
     // total más grande del rango visible (así todas las barras son comparables
@@ -3931,17 +4055,21 @@
     const alturaColPx = (total) => Math.max(Math.round((total / maxTotal) * alturaMaxPx), total > 0 ? 6 : 2);
     // Los 3 segmentos dentro de una barra siempre sí suman 100% de SU PROPIA
     // altura (no de maxTotal) — así se ve la composición interna aunque la
-    // barra sea más chica que otras.
-    const segHtml = (seg) => {
+    // barra sea más chica que otras. Cada segmento lleva su número visible
+    // (si hay espacio) y es clicable para abrir el detalle de esa categoría.
+    const segHtml = (seg, fecha, zona) => {
       const total = seg.total;
       if (total === 0) return '<div class="adhr-seg" style="height:100%; background:var(--surface-2);"></div>';
       const pct = (v) => (v / total) * 100;
+      const numOrBlank = (v) => (v > 0 && pct(v) >= 9) ? `<span class="adhr-seg-num">${v}</span>` : '';
       return `
-        <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron}"></div>
-        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa}"></div>
-        <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron}"></div>
+        <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Faltó">${numOrBlank(seg.faltaron)}</div>
+        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Excusa (Descanso Efectivo)">${numOrBlank(seg.excusa)}</div>
+        <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Asistió">${numOrBlank(seg.asistieron)}</div>
       `;
     };
+
+    const zonaLabel = { Poblaciones: 'Población', Metro: 'Metro' };
 
     wrap.innerHTML = `
       <div class="adhr-legend">
@@ -3953,20 +4081,122 @@
         ${datosPorDia.map(d => `
           <div class="adhr-day">
             <div class="adhr-day-cols">
-              <div>
-                <div class="adhr-col" style="height:${alturaColPx(d.Poblaciones.total)}px;">${segHtml(d.Poblaciones)}</div>
-                <div class="adhr-col-label">Población<br>${d.Poblaciones.asistieron}+${d.Poblaciones.excusa}+${d.Poblaciones.faltaron} de ${d.Poblaciones.total}</div>
-              </div>
-              <div>
-                <div class="adhr-col" style="height:${alturaColPx(d.Metro.total)}px;">${segHtml(d.Metro)}</div>
-                <div class="adhr-col-label">Metro<br>${d.Metro.asistieron}+${d.Metro.excusa}+${d.Metro.faltaron} de ${d.Metro.total}</div>
-              </div>
+              ${zonasAMostrar.map(zona => `
+                <div>
+                  <div class="adhr-col" style="height:${alturaColPx(d[zona].total)}px;">${segHtml(d[zona], d.fecha, zona)}</div>
+                  <div class="adhr-col-label">${zonaLabel[zona]}<br>${d[zona].asistieron}+${d[zona].excusa}+${d[zona].faltaron} de ${d[zona].total}</div>
+                </div>
+              `).join('')}
             </div>
             <div class="adhr-day-label">${d.fecha}</div>
           </div>
         `).join('')}
       </div>
     `;
+
+    wrap.querySelectorAll('.adhr-seg[data-fecha]').forEach(seg => {
+      seg.addEventListener('click', () => {
+        mostrarDetalleAdhrSegmento(seg.dataset.fecha, seg.dataset.zona, seg.dataset.cat);
+      });
+    });
+
+    renderAdhrPromedios(datosPorDia, zonasAMostrar);
+    renderAdhrTopAusencias(datosPorDia, zonasAMostrar);
+  }
+
+  // Tarjeta con los 3 promedios (Asistieron/Excusa/Faltaron) del rango visible
+  // — promedio simple por día-zona mostrado, tal como lo pidió el admin (solo
+  // el número, sin superponer una línea en el gráfico).
+  function renderAdhrPromedios(datosPorDia, zonasAMostrar){
+    let sAsistio = 0, sExcusa = 0, sFalto = 0, n = 0;
+    datosPorDia.forEach(d => zonasAMostrar.forEach(zona => {
+      sAsistio += d[zona].asistieron; sExcusa += d[zona].excusa; sFalto += d[zona].faltaron; n++;
+    }));
+    const prom = (s) => n ? (s / n).toFixed(1) : '0.0';
+    document.getElementById('adhrAvgSummary').innerHTML = `
+      <div class="adhr-avg-card"><span class="adhr-avg-dot asistio"></span><div><div class="adhr-avg-num">${prom(sAsistio)}</div><div class="adhr-avg-label">Promedio asistieron / día</div></div></div>
+      <div class="adhr-avg-card"><span class="adhr-avg-dot excusa"></span><div><div class="adhr-avg-num">${prom(sExcusa)}</div><div class="adhr-avg-label">Promedio excusa / día</div></div></div>
+      <div class="adhr-avg-card"><span class="adhr-avg-dot falto"></span><div><div class="adhr-avg-num">${prom(sFalto)}</div><div class="adhr-avg-label">Promedio faltaron / día</div></div></div>
+    `;
+  }
+
+  // Top de personas con más inasistencias reiterativas, contado SOLO dentro
+  // del rango de fechas actualmente visible en el gráfico (cambia con los
+  // filtros Desde/Hasta) — así lo pidió el admin explícitamente.
+  function renderAdhrTopAusencias(datosPorDia, zonasAMostrar){
+    const conteo = new Map(); // personId -> {nombre, faltas}
+    datosPorDia.forEach(d => zonasAMostrar.forEach(zona => {
+      const detalle = ADHR_DETALLE_CACHE[d.fecha + '|' + zona] || [];
+      detalle.forEach(p => {
+        if (p.estado !== 'Faltó') return;
+        const actual = conteo.get(p.personId) || { nombre: p.nombre, faltas: 0 };
+        actual.faltas++;
+        conteo.set(p.personId, actual);
+      });
+    }));
+    const top = [...conteo.entries()]
+      .map(([personId, v]) => ({ personId, nombre: v.nombre, faltas: v.faltas }))
+      .filter(p => p.faltas > 0)
+      .sort((a, b) => b.faltas - a.faltas || a.nombre.localeCompare(b.nombre))
+      .slice(0, 20);
+
+    const box = document.getElementById('adhrTopWrap');
+    if (top.length === 0){
+      box.innerHTML = '<p class="hint-note">Nadie tiene faltas registradas en el rango de fechas visible.</p>';
+      return;
+    }
+    box.innerHTML = `
+      <div class="section-head" style="margin-bottom:10px;">
+        <div class="section-title" style="font-size:15px;">Top de inasistencias reiterativas (rango visible)</div>
+        <button class="btn-secondary" id="btnAdhrExportTop" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
+      </div>
+      ${top.map((p, i) => `
+        <div class="adhr-top-row">
+          <div class="adhr-top-rank">#${i + 1}</div>
+          <div class="adhr-top-name">${p.nombre} <span style="color:var(--text-faint); font-size:11.5px;">(${p.personId})</span></div>
+          <div class="adhr-top-count">${p.faltas} falta${p.faltas === 1 ? '' : 's'}</div>
+        </div>
+      `).join('')}
+    `;
+    document.getElementById('btnAdhrExportTop').addEventListener('click', () => {
+      const headers = ['Cedula', 'Nombre', 'Faltas_en_rango'];
+      const rows = top.map(p => [p.personId, p.nombre, p.faltas]);
+      downloadCsv('top_inasistencias_ruta_' + new Date().toISOString().slice(0,10) + '.csv', toCsv(headers, rows));
+    });
+  }
+
+  // Detalle persona-por-persona de un segmento específico (fecha+zona+categoría)
+  // del gráfico — se llena desde ADHR_DETALLE_CACHE, con exportación a CSV
+  // pensada explícitamente para tomar medidas contra quienes han faltado.
+  function mostrarDetalleAdhrSegmento(fecha, zona, categoria){
+    const detalle = (ADHR_DETALLE_CACHE[fecha + '|' + zona] || []).filter(p => p.estado === categoria);
+    const zonaLabel = { Poblaciones: 'Población', Metro: 'Metro' }[zona] || zona;
+    const box = document.getElementById('adhrDetail');
+    box.style.display = '';
+    box.innerHTML = `
+      <div class="adhr-detail-head">
+        <div>
+          <div class="adhr-detail-title">${categoria} — ${zonaLabel} — ${fecha}</div>
+          <div class="adhr-detail-sub">${detalle.length} persona${detalle.length === 1 ? '' : 's'}</div>
+        </div>
+        <button class="btn-secondary" id="btnAdhrExportDetalle" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th></tr></thead>
+          <tbody>
+            ${detalle.length === 0 ? '<tr><td colspan="4" class="empty-state">Nadie en esta categoría.</td></tr>' :
+              detalle.map(p => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('btnAdhrExportDetalle').addEventListener('click', () => {
+      const headers = ['Cedula', 'Nombre', 'RolAsignado', 'Estado', 'Fecha', 'Zona'];
+      const rows = detalle.map(p => [p.personId, p.nombre, p.cargo, p.estado, fecha, zonaLabel]);
+      downloadCsv('detalle_ruta_' + fecha + '_' + zonaLabel + '_' + categoria.replace(/[^a-zA-Z0-9]+/g, '_') + '.csv', toCsv(headers, rows));
+    });
   }
 
   // ================= Exportar Asistencias / Designados a CSV (para Excel / Power BI) =================

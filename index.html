@@ -1474,8 +1474,8 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
   import {
-    getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-    addDoc, onSnapshot, query, where
+    getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    addDoc, onSnapshot, query, where, getCountFromServer
   } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
   // =====================================================================
@@ -1549,53 +1549,99 @@
   // cambios en vivo de Firestore (se registran más abajo, cerca de cada render).
   const liveRefreshCallbacks = { people: [], users: [], asistencias: [] };
 
-  // "colaboradores" y "usuarios" son colecciones chicas (decenas de documentos)
-  // y hacen falta desde ANTES de iniciar sesión: la pantalla de selección de CD
-  // muestra el conteo de colaboradores, y el login necesita USERS ya cargado
-  // en memoria para validar usuario/contraseña. Por eso estas dos sí escuchan
-  // en vivo desde que carga la página.
-  onSnapshot(colColaboradores, (snap) => {
-    PEOPLE = snap.docs.map(d => normalizarColaborador(d.id, d.data()));
-    liveRefreshCallbacks.people.forEach(fn => { try { fn(); } catch(e){} });
-  }, (err) => console.error('Error escuchando colaboradores:', err));
+  // "colaboradores" y "usuarios" YA NO escuchan en vivo desde que carga la
+  // página: la inmensa mayoría de quienes abren el link solo quieren ver su
+  // carné QR (pantalla sin login), y antes eso descargaba, cada vez, la
+  // colección COMPLETA de colaboradores de los dos CDs (cientos de
+  // documentos) solo para poder mostrar dos contadores y permitir el login —
+  // esa era la fuente más grande de lecturas de Firestore. Ahora:
+  //   - Los dos contadores de la pantalla de selección de CD usan una
+  //     consulta de conteo (getCountFromServer), que cuesta ~1 lectura cada
+  //     una sin importar cuántos colaboradores haya (ver actualizarConteosCD).
+  //   - La consulta del carné QR ya hacía un getDoc puntual por cédula (ver
+  //     buscarCedula), así que nunca necesitó la colección completa.
+  //   - El login valida usuario/contraseña con un getDoc puntual por
+  //     username (ver loginForm submit) en vez de tener toda la colección
+  //     "usuarios" cargada de antemano.
+  // Las suscripciones en vivo de verdad (para que el panel admin y el
+  // escaneo funcionen con datos frescos) solo arrancan DESPUÉS de iniciar
+  // sesión, dentro de iniciarSuscripcionesPesadas — así que el grueso de las
+  // lecturas ahora lo paga quien realmente usa un usuario, no quien solo
+  // consulta su QR.
 
-  onSnapshot(colUsuarios, (snap) => {
-    const next = {};
-    snap.docs.forEach(d => { next[d.id] = d.data(); });
-    USERS = next;
-    liveRefreshCallbacks.users.forEach(fn => { try { fn(); } catch(e){} });
-  }, (err) => console.error('Error escuchando usuarios:', err));
-
-  // "asistencias", "designados" y "encuestasABI" en cambio SOLO hacen falta
+  // "asistencias", "designados", "encuestasABI" y ahora también "colaboradores"
   // dentro de los portales de líder/admin/auditor ABI (ya con sesión iniciada),
   // y son colecciones que crecen sin parar con el historial. Si se suscriben
   // desde que carga la página, cualquier persona que solo abre el link para
   // consultar su carné QR (pantalla sin login) dispara una lectura completa de
   // TODO el historial — con el link circulando entre todos los colaboradores,
   // esto agotó la cuota gratuita de Firestore en pocas horas. Por eso estas
-  // tres se difieren y solo se activan una vez, la primera vez que alguien
-  // inicia sesión (ver iniciarSuscripcionesPesadas más abajo).
-  let suscripcionesPesadasActivas = false;
+  // tres se difieren y solo se activan una vez alguien inicia sesión (ver
+  // iniciarSuscripcionesPesadas más abajo).
+  //
+  // Además, TODA la app solo muestra/usa datos del CD seleccionado
+  // (selectedCD) — nunca se lee el otro CD en pantalla. Antes estas tres
+  // suscripciones traían el historial COMPLETO de ambos CDs sin filtrar, así
+  // que cada inicio de sesión pagaba una lectura por cada documento de TODA
+  // la historia acumulada (de los dos CDs), no solo la del CD que esa persona
+  // usa. Con el historial creciendo día a día y varios inicios de sesión al
+  // día (cambios de turno, reconexiones), esto es lo que dispara las lecturas.
+  // Ahora se filtran con where('cd', '==', selectedCD): cada sesión solo paga
+  // por los documentos de su propio CD.
+  let suscripcionesPesadasCD = null;
+  let unsubAsistencias = null, unsubDesignados = null, unsubEncuestasABI = null, unsubColaboradores = null;
+  let unsubUsuarios = null; // "usuarios" es chica (decenas de docs): no depende del CD, se suscribe una sola vez.
   function iniciarSuscripcionesPesadas(){
-    if (suscripcionesPesadasActivas) return;
-    suscripcionesPesadasActivas = true;
+    if (suscripcionesPesadasCD === selectedCD) return; // ya suscrito a este mismo CD
+    // Si había suscripciones activas para OTRO CD (alguien cerró sesión y volvió
+    // a entrar eligiendo el otro CD, sin recargar la página), se cierran primero
+    // para no seguir pagando lecturas de un CD que ya no se está usando.
+    if (unsubAsistencias) unsubAsistencias();
+    if (unsubDesignados) unsubDesignados();
+    if (unsubEncuestasABI) unsubEncuestasABI();
+    if (unsubColaboradores) unsubColaboradores();
+    suscripcionesPesadasCD = selectedCD;
 
-    onSnapshot(colAsistencias, (snap) => {
+    const qAsistencias = query(colAsistencias, where('cd', '==', selectedCD));
+    unsubAsistencias = onSnapshot(qAsistencias, (snap) => {
       ATTENDANCE_LOG.length = 0;
       snap.docs.forEach(d => ATTENDANCE_LOG.push(d.data()));
       liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
     }, (err) => console.error('Error escuchando asistencias:', err));
 
-    onSnapshot(colDesignados, (snap) => {
+    const qDesignados = query(colDesignados, where('cd', '==', selectedCD));
+    unsubDesignados = onSnapshot(qDesignados, (snap) => {
       DESIGNATION_LOG.length = 0;
       snap.docs.forEach(d => DESIGNATION_LOG.push(d.data()));
       liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
     }, (err) => console.error('Error escuchando designados:', err));
 
-    onSnapshot(colEncuestasABI, (snap) => {
+    const qEncuestasABI = query(colEncuestasABI, where('cd', '==', selectedCD));
+    unsubEncuestasABI = onSnapshot(qEncuestasABI, (snap) => {
       ABI_SURVEYS.length = 0;
       snap.docs.forEach(d => ABI_SURVEYS.push({ id: d.id, ...d.data() }));
     }, (err) => console.error('Error escuchando encuestas ABI:', err));
+
+    // Colaboradores del CD activo, en vivo: alta/baja/edición hecha por el admin
+    // se refleja de inmediato en todas las pantallas con sesión iniciada de ese CD.
+    const qColaboradores = query(colColaboradores, where('cd', '==', selectedCD));
+    unsubColaboradores = onSnapshot(qColaboradores, (snap) => {
+      PEOPLE = snap.docs.map(d => normalizarColaborador(d.id, d.data()));
+      liveRefreshCallbacks.people.forEach(fn => { try { fn(); } catch(e){} });
+    }, (err) => console.error('Error escuchando colaboradores:', err));
+
+    // "usuarios" (login de supervisores/admin/ABI) solo se suscribe en vivo una
+    // vez, la primera vez que alguien entra en esta pestaña — el login en sí ya
+    // no depende de esto (ver loginForm submit), pero el panel "Usuarios del
+    // sistema" sí necesita la lista completa y actualizada en vivo.
+    if (!unsubUsuarios){
+      unsubUsuarios = onSnapshot(colUsuarios, (snap) => {
+        const next = {};
+        snap.docs.forEach(d => { next[d.id] = d.data(); });
+        USERS = next;
+        liveRefreshCallbacks.users.forEach(fn => { try { fn(); } catch(e){} });
+      }, (err) => console.error('Error escuchando usuarios:', err));
+    }
   }
 
   const ALL_RUTINAS = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC', 'Cambio de turno', 'Entrenamiento OL', 'Diaria Logística'];
@@ -1657,13 +1703,25 @@
   // Semilla inicial de colaboradores: si la colección "colaboradores" está
   // vacía y data.js definió window.PEOPLE (carga histórica del prototipo),
   // se sube una sola vez a Firestore con setDoc(id=cédula) para no duplicar.
+  //
+  // Esto corre en CADA carga de la página (para cualquier visitante, incluso
+  // quien solo va a consultar su QR), así que antes usaba getDocs — una
+  // lectura completa de las dos colecciones enteras — SOLO para comprobar si
+  // estaban vacías. Una vez sembradas la primera vez (que ya pasó hace
+  // tiempo), esa comprobación se repetía en cada visita sin necesidad,
+  // siendo probablemente la lectura más cara y más frecuente de toda la app.
+  // Ahora usa getCountFromServer (conteo, ~1 lectura) para decidir si hace
+  // falta sembrar, y solo si el conteo da 0 hace la lectura/escritura real.
   async function sembrarDatosIniciales(){
     try {
-      const [colabSnap, usersSnap] = await Promise.all([getDocs(colColaboradores), getDocs(colUsuarios)]);
-      if (usersSnap.empty){
+      const [colabCount, usersCount] = await Promise.all([
+        getCountFromServer(colColaboradores),
+        getCountFromServer(colUsuarios),
+      ]);
+      if (usersCount.data().count === 0){
         await Promise.all(Object.entries(USERS_SEED).map(([uname, u]) => setDoc(doc(colUsuarios, uname), u)));
       }
-      if (colabSnap.empty && Array.isArray(window.PEOPLE) && window.PEOPLE.length){
+      if (colabCount.data().count === 0 && Array.isArray(window.PEOPLE) && window.PEOPLE.length){
         // Firestore permite máx. 500 escrituras por batch; con setDoc individual
         // (más simple de mantener) basta para la carga inicial de colaboradores.
         await Promise.all(window.PEOPLE.map(p => setDoc(doc(colColaboradores, String(p.id)), {
@@ -1816,19 +1874,25 @@
   let abiUserBeforeMarking = null; // guarda el usuario auditor ABI para poder volver a su portal de auditoría
 
   // ---- Conteos en pantalla de selección ----
-  // Antes esto se calculaba una sola vez al cargar el script, ANTES de que
-  // onSnapshot trajera los colaboradores reales desde Firestore (llegan de
-  // forma asíncrona un instante después), por eso siempre mostraba "0
-  // colaboradores" aunque los datos sí estuvieran ahí. Ahora se recalcula
-  // cada vez que PEOPLE cambia, usando el mismo mecanismo de refresco en
-  // vivo que ya usan las demás pantallas.
-  function actualizarConteosCD(){
-    document.getElementById('countVVC').textContent = countByCD('Villavicencio') + ' colaboradores';
-    document.getElementById('countYOP').textContent = countByCD('Yopal') + ' colaboradores';
+  // Esta pantalla se ve ANTES de iniciar sesión, así que ya no depende de
+  // PEOPLE (que ahora solo se carga en vivo después del login — ver
+  // iniciarSuscripcionesPesadas). Usa getCountFromServer, una consulta de
+  // conteo que cuesta ~1 lectura sin importar cuántos colaboradores haya,
+  // en vez de descargar la colección completa de los dos CDs solo para
+  // contar cuántos documentos tiene cada uno.
+  async function actualizarConteosCD(){
+    try {
+      const [vvc, yop] = await Promise.all([
+        getCountFromServer(query(colColaboradores, where('cd', '==', 'Villavicencio'))),
+        getCountFromServer(query(colColaboradores, where('cd', '==', 'Yopal'))),
+      ]);
+      document.getElementById('countVVC').textContent = vvc.data().count + ' colaboradores';
+      document.getElementById('countYOP').textContent = yop.data().count + ' colaboradores';
+    } catch (e) {
+      console.error('No se pudo obtener el conteo de colaboradores:', e);
+    }
   }
-  function countByCD(cd){ return PEOPLE.filter(p => p.cd === cd).length; }
   actualizarConteosCD();
-  liveRefreshCallbacks.people.push(actualizarConteosCD);
 
   document.querySelectorAll('.cd-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -1933,17 +1997,44 @@
   const passInput = document.getElementById('pass');
   togglePass.addEventListener('click', () => { passInput.type = passInput.type === 'password' ? 'text' : 'password'; });
 
-  document.getElementById('loginForm').addEventListener('submit', () => {
+  document.getElementById('loginForm').addEventListener('submit', async () => {
     const u = document.getElementById('user').value.trim().toLowerCase();
     const p = passInput.value.trim();
     const err = document.getElementById('errorMsg');
-    const found = USERS[u];
+    const errText = err.querySelector('span');
+    const errTextDefault = errText.textContent;
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (!u || !p){ errText.textContent = errTextDefault; err.classList.add('show'); return; }
+
+    // Validación de usuario/contraseña con un getDoc puntual (el id del
+    // documento en "usuarios" ES el username) en vez de depender de la
+    // colección "usuarios" completa cargada de antemano: así un intento de
+    // login cuesta 1 lectura, sin importar cuántos usuarios existan, y un
+    // usuario recién creado por el admin funciona de inmediato (no hace
+    // falta recargar la página para que "aparezca", porque esto siempre lee
+    // directo de Firestore, nunca de una caché local vieja).
+    loginBtn.disabled = true;
+    let found = null;
+    try {
+      const snap = await getDoc(doc(colUsuarios, u));
+      if (snap.exists()) found = snap.data();
+    } catch (e) {
+      console.error('No se pudo validar el usuario:', e);
+      errText.textContent = 'No se pudo conectar con la base de datos. Intenta de nuevo en unos segundos.';
+      err.classList.add('show');
+      loginBtn.disabled = false;
+      return;
+    }
+    loginBtn.disabled = false;
 
     if (found && found.pass === p) {
+      errText.textContent = errTextDefault;
       err.classList.remove('show');
       currentUser = found;
       // Recién AHORA (con sesión iniciada) hacen falta las colecciones pesadas
-      // de historial — ver la nota junto a iniciarSuscripcionesPesadas más arriba.
+      // de historial y de colaboradores del CD — ver la nota junto a
+      // iniciarSuscripcionesPesadas más arriba.
       iniciarSuscripcionesPesadas();
 
       if (found.admin || found.reportOnly) {
@@ -1985,6 +2076,7 @@
         initLeaderPortal(currentUser);
       }
     } else {
+      errText.textContent = errTextDefault;
       err.classList.add('show');
     }
   });

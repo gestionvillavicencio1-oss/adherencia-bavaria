@@ -659,6 +659,19 @@
   .adh-bar-frac{width:64px; text-align:right; font-size:11px; color:var(--text-faint);}
   .adh-note{background:var(--surface-2); border:1px dashed var(--border); border-radius:12px; padding:10px 14px; font-size:11.5px; color:var(--text-faint); margin-bottom:16px; line-height:1.5;}
 
+  /* Carga de Descanso Efectivo */
+  .descanso-card{background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 18px; margin-bottom:20px;}
+  .descanso-card-head{margin-bottom:12px;}
+  .descanso-card-title{font-weight:700; font-size:13.5px; color:var(--text);}
+  .descanso-card-sub{font-size:11.5px; color:var(--text-faint); margin-top:2px; line-height:1.5;}
+  .descanso-card-row{display:flex; align-items:center; flex-wrap:wrap; gap:10px;}
+  .descanso-preview-box{margin-top:14px; background:var(--surface-2); border:1px dashed var(--border); border-radius:12px; padding:12px 14px;}
+  .descanso-preview-title{font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:8px;}
+  .descanso-preview-list{display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; margin-bottom:10px;}
+  .descanso-preview-item{font-size:12px; color:var(--text-dim); display:flex; justify-content:space-between; gap:10px;}
+  .descanso-preview-item span:last-child{color:var(--text-faint); flex-shrink:0;}
+  .descanso-preview-warn{font-size:11px; color:var(--gold-2); margin-bottom:8px;}
+
   /* Adherencia por persona (semáforo) */
   .adhp-summary{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
   @media (max-width:1000px){ .adhp-summary{grid-template-columns:1fr 1fr;} }
@@ -682,6 +695,28 @@
   .semaforo-pill.naranja .dot{background:#e88a23;}
   .semaforo-pill.rojo{background:rgba(232,67,47,0.12); border:1px solid rgba(232,67,47,0.35); color:#f4948a;}
   .semaforo-pill.rojo .dot{background:#e8432f;}
+  .semaforo-pill.descanso{background:rgba(138,180,248,0.12); border:1px solid rgba(138,180,248,0.35); color:#8ab4f8;}
+  .semaforo-pill.descanso .dot{background:#8ab4f8;}
+
+  /* Gráfico de adherencia real por ruta (barras apiladas) */
+  .adhr-legend{display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px;}
+  .adhr-legend-item{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-dim);}
+  .adhr-legend-dot{width:11px;height:11px;border-radius:4px; flex-shrink:0;}
+  .adhr-legend-dot.asistio{background:#7cd68a;}
+  .adhr-legend-dot.excusa{background:#8ab4f8;}
+  .adhr-legend-dot.falto{background:#e8432f;}
+  .adhr-chart{display:flex; align-items:flex-end; gap:22px; overflow-x:auto; padding:10px 4px 0; min-height:260px;}
+  .adhr-day{display:flex; flex-direction:column; align-items:center; flex-shrink:0; min-width:96px;}
+  .adhr-day-cols{display:flex; align-items:flex-end; gap:8px; height:200px;}
+  .adhr-col{width:34px; display:flex; flex-direction:column-reverse; border-radius:4px 4px 0 0; overflow:hidden; background:var(--surface-2); border:1px solid var(--border); position:relative;}
+  .adhr-seg{width:100%;}
+  .adhr-seg.asistio{background:#7cd68a;}
+  .adhr-seg.excusa{background:#8ab4f8;}
+  .adhr-seg.falto{background:#e8432f;}
+  .adhr-col-label{font-size:10px; color:var(--text-faint); margin-top:6px; text-align:center;}
+  .adhr-day-label{font-size:11.5px; color:var(--text-dim); margin-top:10px; font-weight:600; text-align:center;}
+  .adhr-day-total{font-size:10px; color:var(--text-faint); margin-top:1px;}
+  .adhr-tooltip-num{font-size:9.5px; color:var(--text-faint);}
   .adhp-row:hover{background:rgba(232,185,35,0.04);}
   .adhp-caret{transition:transform .12s ease; color:var(--text-faint);}
   .adhp-detail-group td{border-bottom:1px solid var(--border);}
@@ -969,6 +1004,7 @@
     <button class="admin-tab" data-tab="tabTurnos">Turnos rotativos A/B/C</button>
     <button class="admin-tab" data-tab="tabAdherencia" data-report-visible="1">Adherencia</button>
     <button class="admin-tab" data-tab="tabAdherenciaPersona" data-report-visible="1">Adherencia por persona</button>
+    <button class="admin-tab" data-tab="tabAdherenciaRuta" data-report-visible="1">Adherencia real por ruta</button>
     <button class="admin-tab" data-tab="tabEncuestas" data-report-visible="1">Encuestas ABI</button>
   </div>
 
@@ -1213,7 +1249,26 @@
       <div class="section-head">
         <div class="section-title">Adherencia por persona</div>
       </div>
-      <p class="adh-note">Por cada colaborador se evalúa, día por día, si asistió a <b>al menos una</b> de sus rutinas posibles (según su Grupo) — no si fue a todas. Solo cuentan los días en que realmente hubo una rutina operando para su grupo (si un día no hubo ninguna rutina abierta, ese día no cuenta ni suma ni corta la racha). <b>Racha actual</b> = días operativos seguidos, contando desde el más reciente, sin ninguna asistencia. <b>Verde</b> = 0 · <b>Amarillo</b> = 1 · <b>Naranja</b> = 2 · <b>Rojo</b> = 3 o más días seguidos sin asistir a nada — alerta.</p>
+      <p class="adh-note">Por cada colaborador se evalúa, día por día, si asistió a <b>al menos una</b> de sus rutinas posibles (según su Grupo) — no si fue a todas. Solo cuentan los días en que realmente hubo una rutina operando para su grupo (si un día no hubo ninguna rutina abierta, ese día no cuenta ni suma ni corta la racha). <b>Racha actual</b> = días operativos seguidos, contando desde el más reciente, sin ninguna asistencia. <b>Verde</b> = 0 · <b>Amarillo</b> = 1 · <b>Naranja</b> = 2 · <b>Rojo</b> = 3 o más días seguidos sin asistir a nada — alerta. Un día marcado <b>Descanso Efectivo</b> (UC, cuando el colaborador quedó disponible a las 6:05 a.m. o después, según la plantilla de descanso) tampoco cuenta ni suma ni corta la racha.</p>
+
+      <div class="descanso-card">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Cargar Descanso Efectivo del día</div>
+            <div class="descanso-card-sub">Sube el Excel "PLANTILLA DESCANSO EFECTIVO" tal como lo descargas — se lee en el navegador, nada se sube a ningún servidor externo.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha a la que aplica
+            <input type="text" id="descansoFecha" placeholder="AAAA-MM-DD" style="width:130px;">
+          </label>
+          <input type="file" id="descansoFileInput" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-secondary" id="btnDescansoElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
+          <span id="descansoFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
+        </div>
+        <div id="descansoPreview"></div>
+      </div>
+
       <div class="adh-filters">
         <select id="adhpRutina"><option value="">Todas las rutinas</option></select>
         <select id="adhpGrupo"><option value="">Todos los grupos</option></select>
@@ -1245,6 +1300,44 @@
           <tbody id="adhpBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- =============== TAB: Adherencia real por ruta (Población/Metro) =============== -->
+    <div class="admin-tab-panel" id="tabAdherenciaRuta" hidden>
+      <div class="section-head">
+        <div class="section-title">Adherencia real por ruta — Matinal Poblaciones / Matinal Metro</div>
+      </div>
+      <p class="adh-note">Compara, día por día y por zona, cuántas personas estaban <b>realmente asignadas</b> (según el Excel de asignación por ruta) contra cuántas <b>asistieron</b> (QR) y cuántas tuvieron <b>excusa</b> (Descanso Efectivo) — el resto son las que <b>faltaron</b>. El escaneo nunca se restringe por esta asignación: cualquier persona de UC puede marcar en cualquier matinal; esta vista solo mide qué tan real fue la asignación planeada frente a lo que pasó.</p>
+
+      <div class="descanso-card">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Cargar asignación real por ruta (NOMINAS)</div>
+            <div class="descanso-card-sub">Sube el Excel "NOMINAS" con las hojas de Zona Población y Zona Metro (Conductor / Responsable de Reparto / Auxiliares) — se lee en el navegador, nada se sube a ningún servidor externo. La versión que subas aplica desde la fecha de vigencia que elijas <b>en adelante</b>, hasta que subas una nueva.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Vigente desde
+            <input type="text" id="nominasFecha" placeholder="AAAA-MM-DD" style="width:130px;">
+          </label>
+          <input type="file" id="nominasFileInput" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-secondary" id="btnNominasElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
+          <span id="nominasFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
+        </div>
+        <div id="nominasPreview"></div>
+      </div>
+
+      <div class="adh-filters">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
+          <input type="text" id="adhrFechaDesde" placeholder="AAAA-MM-DD" style="width:120px;">
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta
+          <input type="text" id="adhrFechaHasta" placeholder="AAAA-MM-DD" style="width:120px;">
+        </label>
+        <button class="btn-secondary" id="btnAdhrLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Últimos 10 días hábiles</button>
+      </div>
+      <div id="adhrChartWrap"></div>
+      <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes).</p>
     </div>
 
     <!-- =============== TAB: Encuestas ABI =============== -->
@@ -1463,6 +1556,8 @@
 <script src="data.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+<!-- SheetJS: lee el Excel de "Descanso Efectivo" directo en el navegador (nada se sube a ningún servidor externo). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- ===================================================================
      FIREBASE SDK (modular, vía CDN) — Firestore como base de datos real.
      Todo el código de la app vive en este único bloque de script de tipo
@@ -1474,7 +1569,7 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
   import {
-    getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
     addDoc, onSnapshot, query, where, getCountFromServer
   } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
@@ -1502,16 +1597,20 @@
   const db = getFirestore(fbApp);
 
   // Nombres de colecciones de Firestore (en español, consistentes con el dominio):
-  //  - colaboradores  (doc id = cédula)
-  //  - usuarios       (doc id = username)
-  //  - asistencias    (id determinístico ${cd}_${rutina}_${fecha}_${personId})
-  //  - designados     (id determinístico ${cd}_${rutina}_${fecha}_${personId})
-  //  - encuestasABI   (auto-id)
+  //  - colaboradores    (doc id = cédula)
+  //  - usuarios         (doc id = username)
+  //  - asistencias      (id determinístico ${cd}_${rutina}_${fecha}_${personId})
+  //  - designados       (id determinístico ${cd}_${rutina}_${fecha}_${personId})
+  //  - encuestasABI     (auto-id)
+  //  - descansoEfectivo (id determinístico ${cd}_${fecha}_${personId} — ver "Adherencia por persona")
+  //  - asignacionesRuta (id determinístico ${cd}_${vigenciaDesde} — ver "Asignación real por ruta")
   const colColaboradores = collection(db, 'colaboradores');
   const colUsuarios = collection(db, 'usuarios');
   const colAsistencias = collection(db, 'asistencias');
   const colDesignados = collection(db, 'designados');
   const colEncuestasABI = collection(db, 'encuestasABI');
+  const colDescansoEfectivo = collection(db, 'descansoEfectivo');
+  const colAsignacionesRuta = collection(db, 'asignacionesRuta');
 
   // ============================================================================
   // CAPA DE DATOS — antes vivía solo en memoria del navegador (arrays PEOPLE,
@@ -1544,6 +1643,11 @@
   const ATTENDANCE_LOG = [];
   const DESIGNATION_LOG = [];
   const ABI_SURVEYS = [];
+  const DESCANSO_EFECTIVO_LOG = []; // { cd, fecha, personId } — ver "Adherencia por persona"
+  // Cada elemento = una versión completa subida ("carga"), NO una persona:
+  // { cd, vigenciaDesde, creadoEn, personas:[{personId,nombre,zona,rol}] } —
+  // ver "Asignación real por ruta" y asignacionVigenteEnFecha().
+  const ASIGNACION_RUTA_LOG = [];
 
   // Callbacks que refrescan la pantalla actualmente visible cuando llegan
   // cambios en vivo de Firestore (se registran más abajo, cerca de cada render).
@@ -1589,7 +1693,7 @@
   // Ahora se filtran con where('cd', '==', selectedCD): cada sesión solo paga
   // por los documentos de su propio CD.
   let suscripcionesPesadasCD = null;
-  let unsubAsistencias = null, unsubDesignados = null, unsubEncuestasABI = null, unsubColaboradores = null;
+  let unsubAsistencias = null, unsubDesignados = null, unsubEncuestasABI = null, unsubColaboradores = null, unsubDescansoEfectivo = null, unsubAsignacionesRuta = null;
   let unsubUsuarios = null; // "usuarios" es chica (decenas de docs): no depende del CD, se suscribe una sola vez.
   function iniciarSuscripcionesPesadas(){
     if (suscripcionesPesadasCD === selectedCD) return; // ya suscrito a este mismo CD
@@ -1600,6 +1704,8 @@
     if (unsubDesignados) unsubDesignados();
     if (unsubEncuestasABI) unsubEncuestasABI();
     if (unsubColaboradores) unsubColaboradores();
+    if (unsubDescansoEfectivo) unsubDescansoEfectivo();
+    if (unsubAsignacionesRuta) unsubAsignacionesRuta();
     suscripcionesPesadasCD = selectedCD;
 
     const qAsistencias = query(colAsistencias, where('cd', '==', selectedCD));
@@ -1621,6 +1727,24 @@
       ABI_SURVEYS.length = 0;
       snap.docs.forEach(d => ABI_SURVEYS.push({ id: d.id, ...d.data() }));
     }, (err) => console.error('Error escuchando encuestas ABI:', err));
+
+    const qDescansoEfectivo = query(colDescansoEfectivo, where('cd', '==', selectedCD));
+    unsubDescansoEfectivo = onSnapshot(qDescansoEfectivo, (snap) => {
+      DESCANSO_EFECTIVO_LOG.length = 0;
+      snap.docs.forEach(d => DESCANSO_EFECTIVO_LOG.push(d.data()));
+      liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
+    }, (err) => console.error('Error escuchando descanso efectivo:', err));
+
+    // Asignación real por ruta (Zona Población / Zona Metro), en vivo — colección
+    // chica que solo cambia cuando el admin sube una nueva versión (no a diario),
+    // así que el costo de tenerla en vivo es mínimo. Cada doc es UNA VERSIÓN
+    // completa con su fecha de vigencia; ver asignacionVigenteEnFecha().
+    const qAsignacionesRuta = query(colAsignacionesRuta, where('cd', '==', selectedCD));
+    unsubAsignacionesRuta = onSnapshot(qAsignacionesRuta, (snap) => {
+      ASIGNACION_RUTA_LOG.length = 0;
+      snap.docs.forEach(d => ASIGNACION_RUTA_LOG.push(d.data()));
+      liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
+    }, (err) => console.error('Error escuchando asignaciones de ruta:', err));
 
     // Colaboradores del CD activo, en vivo: alta/baja/edición hecha por el admin
     // se refleja de inmediato en todas las pantallas con sesión iniciada de ese CD.
@@ -1669,6 +1793,92 @@
     if (!p) return [];
     return RUTINAS_POR_GRUPO[p.grupo] || p.rutinas || [];
   }
+
+  // ================= Asignación real por ruta (Zona Población / Zona Metro) =================
+  // Reemplaza, SOLO para 'Matinal Poblaciones' y 'Matinal Metro', el criterio "todo
+  // el grupo UC" por la asignación real que llega del Excel NOMINAS (ver
+  // setupAsignacionRutaUI): cada persona queda asignada a una zona (y con qué rol:
+  // Conductor / Responsable de Reparto / Auxiliar) desde una fecha de vigencia en
+  // adelante, hasta que una carga más nueva la reemplace. 'Entrenamiento UC' NO
+  // cambia su criterio de designados (sigue siendo todo el grupo UC), pero su META
+  // sí se recalcula a partir de esta misma asignación (ver metaEntrenamientoUC()).
+  const ZONA_A_RUTINA = { Poblaciones: 'Matinal Poblaciones', Metro: 'Matinal Metro' };
+  const RUTINA_A_ZONA = { 'Matinal Poblaciones': 'Poblaciones', 'Matinal Metro': 'Metro' };
+
+  // Devuelve la versión de asignación vigente para (cd, fecha): la carga con
+  // vigenciaDesde <= fecha más reciente (la de vigenciaDesde más grande que no
+  // se pase de fecha). Si fecha es anterior a toda carga registrada, no hay
+  // ninguna vigente todavía (devuelve null) — evita aplicar hacia atrás una
+  // asignación que en ese momento no existía.
+  function asignacionVigenteEnFecha(cd, fecha){
+    let mejor = null;
+    for (const v of ASIGNACION_RUTA_LOG){
+      if (v.cd !== cd) continue;
+      if (v.vigenciaDesde > fecha) continue;
+      if (!mejor || v.vigenciaDesde > mejor.vigenciaDesde) mejor = v;
+    }
+    return mejor;
+  }
+
+  // Personas asignadas a una zona (Poblaciones|Metro) en la versión vigente para
+  // (cd, fecha). Devuelve [] si todavía no hay ninguna carga vigente esa fecha.
+  function personasAsignadasZona(cd, fecha, zona){
+    const v = asignacionVigenteEnFecha(cd, fecha);
+    if (!v) return [];
+    return v.personas.filter(p => p.zona === zona);
+  }
+
+  // Mapa personId -> zona asignada (vigente en fecha), para saber rápido si
+  // alguien marcó en la matinal distinta a la que le correspondía.
+  function mapaZonaAsignadaEnFecha(cd, fecha){
+    const v = asignacionVigenteEnFecha(cd, fecha);
+    const mapa = new Map();
+    if (!v) return mapa;
+    v.personas.forEach(p => { if (!mapa.has(p.personId)) mapa.set(p.personId, p.zona); });
+    return mapa;
+  }
+
+  // Meta de "Entrenamiento UC": ya no es "todo el grupo UC", sino el número de
+  // personas distintas (unión) en la asignación vigente de Población + Metro,
+  // tal como lo pidió el admin ("cuánto es el número total de trabajadores
+  // asignados para que ese sea la meta"). Si aún no hay ninguna carga vigente
+  // esa fecha, cae de vuelta al grupo UC completo (mismo comportamiento de
+  // siempre) para no dejar la meta en 0 antes de la primera carga.
+  function metaEntrenamientoUC(cd, fecha){
+    const v = asignacionVigenteEnFecha(cd, fecha);
+    if (!v) return PEOPLE.filter(p => p.cd === cd && p.grupo === 'UC').length;
+    return new Set(v.personas.map(p => p.personId)).size;
+  }
+
+  // Personas "designadas" a Matinal Poblaciones / Matinal Metro para (cd, fecha):
+  // ya no es rutinasDeColaborador (grupo=UC), sino la asignación real vigente esa
+  // fecha, cruzada contra PEOPLE (para tener nombre/cargo/grupo actualizados). Si
+  // una cédula del Excel no existe (o ya no existe) en colaboradores de este CD,
+  // se ignora aquí en silencio (ya se avisa en la previsualización de la carga).
+  function designadosZonaEnFecha(rutina, cd, fecha){
+    const zona = RUTINA_A_ZONA[rutina];
+    if (!zona) return [];
+    const peopleById = new Map(PEOPLE.filter(p => p.cd === cd).map(p => [p.id, p]));
+    const asignados = personasAsignadasZona(cd, fecha, zona);
+    const vistos = new Set();
+    const out = [];
+    asignados.forEach(a => {
+      if (vistos.has(a.personId)) return; // una persona puede aparecer 2 veces si quedó mal cargada; no duplicar
+      vistos.add(a.personId);
+      const p = peopleById.get(a.personId);
+      if (p) out.push(p);
+    });
+    return out;
+  }
+
+  // ================= Descanso Efectivo (excusa por descanso mínimo) =================
+  // Cada mañana el admin sube la plantilla "PLANTILLA DESCANSO EFECTIVO" (columnas
+  // CEDULA / SALIDA / DISPONIBLE, entre otras): DISPONIBLE es la hora a partir de la
+  // cual la persona queda legalmente disponible tras su descanso mínimo (10h10 desde
+  // la SALIDA de su turno anterior). Si DISPONIBLE >= 6:05 a. m., no alcanza a entrar
+  // a las matinales del UC y queda con excusa ese día (ver renderAdherenciaPorPersona).
+  const RUTINAS_EXCUSABLES_DESCANSO = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC'];
+  const CORTE_DESCANSO_MIN = 6 * 60 + 5; // 6:05 a. m., en minutos desde medianoche
 
   // NOTA DE SEGURIDAD (a propósito, no lo "arregles" sin que te lo pidan):
   // Las contraseñas de USUARIOS se guardan en TEXTO PLANO en Firestore, tal
@@ -1775,6 +1985,17 @@
     const fecha = new Date().toISOString().slice(0, 10);
     if (!rutinaAplicaHoy(rutina, fecha)) return;
     const idDet = `${cd}_${rutina}_${fecha}_${persona.id}`;
+    // Si es Matinal Poblaciones/Metro y ya hay asignación real vigente esa
+    // fecha, se guarda si esta marca coincide con la zona asignada de la
+    // persona o si entró "cruzado" (asignado a la otra) — el escaneo nunca se
+    // bloquea por esto, solo queda registrado para poder auditarlo/reportarlo
+    // (ver renderYaRegistradosHoy y el gráfico de adherencia real por ruta).
+    const zonaRutina = RUTINA_A_ZONA[rutina] || null;
+    let zonaAsignada = null, zonaCruzada = false;
+    if (zonaRutina){
+      zonaAsignada = mapaZonaAsignadaEnFecha(cd, fecha).get(persona.id) || null;
+      zonaCruzada = !!zonaAsignada && zonaAsignada !== zonaRutina;
+    }
     try {
       await setDoc(doc(colAsistencias, idDet), {
         personId: persona.id,
@@ -1791,6 +2012,11 @@
         // Ya NO refleja una asignación fija del colaborador: cualquiera puede
         // marcar en cualquier turno, así que esto es el turno real de ESA sesión.
         turno: turno || null,
+        // Solo relevante en Matinal Poblaciones/Metro: a qué zona estaba
+        // asignada la persona ese día (null si aún no hay carga vigente) y si
+        // marcó en una zona distinta a la asignada.
+        zonaAsignada,
+        zonaCruzada,
       });
     } catch (e) {
       console.error('No se pudo registrar la asistencia en Firestore:', e);
@@ -2169,6 +2395,7 @@
         if (tab.dataset.tab === 'tabTurnos') renderTurnos();
         if (tab.dataset.tab === 'tabAdherencia') renderAdherencia();
         if (tab.dataset.tab === 'tabAdherenciaPersona') renderAdherenciaPorPersona();
+        if (tab.dataset.tab === 'tabAdherenciaRuta') renderAdherenciaRuta();
         if (tab.dataset.tab === 'tabEncuestas') renderEncuestasAdmin();
       });
     });
@@ -2981,8 +3208,191 @@
     rutinaSel.dataset.filled = '1';
   }
 
+  // ================= Carga de Descanso Efectivo (Excel diario) =================
+  // Lee la plantilla "PLANTILLA DESCANSO EFECTIVO" (columnas N°/CEDULA/NOMBRE/
+  // CARGO/SALIDA/DESCANSO/DESCANSO/DISPONIBLE/NOVEDAD) enteramente en el
+  // navegador con SheetJS (nada se sube a ningún servidor externo). Extrae
+  // CEDULA + DISPONIBLE, cruza contra los colaboradores de este CD y guarda en
+  // Firestore quién queda con excusa (DISPONIBLE >= 6:05 a. m.) para las
+  // rutinas de RUTINAS_EXCUSABLES_DESCANSO ese día.
+  let descansoParseado = null; // { fecha, filas: [{personId, nombre, minutos}] } — pendiente de guardar
+
+  // Extrae "minutos desde medianoche" de una celda DISPONIBLE, sin importar si
+  // Excel la entregó como número serial (lo normal cuando la suma pasa de
+  // medianoche), objeto Date, texto "H:MM" o un error de fórmula (#VALUE!,
+  // por una fila "SIN SALIDA"): en ese último caso no hay dato confiable, así
+  // que se trata igual que "sin excusa" (política ya confirmada con el admin).
+  function minutosDeCelda(valor){
+    if (valor === null || valor === undefined || valor === '') return null;
+    if (typeof valor === 'number' && isFinite(valor)){
+      const fraccion = valor - Math.floor(valor); // parte decimal = hora del día
+      return Math.round(fraccion * 24 * 60);
+    }
+    if (valor instanceof Date){
+      return valor.getHours() * 60 + valor.getMinutes();
+    }
+    if (typeof valor === 'string'){
+      const m = valor.trim().match(/^(\d{1,2}):(\d{2})/);
+      if (m) return (+m[1]) * 60 + (+m[2]);
+    }
+    return null; // texto no reconocible (p.ej. "#VALUE!", "SIN SALIDA") → sin dato
+  }
+
+  function normalizarCedulaExcel(valor){
+    return String(valor == null ? '' : valor).replace(/[^0-9]/g, '');
+  }
+
+  function formatoHHMM(minutos){
+    const h = Math.floor(minutos / 60) % 24;
+    const m = minutos % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  function setupDescansoEfectivoUI(){
+    const fechaInput = document.getElementById('descansoFecha');
+    if (fechaInput.dataset.filled) return;
+    fechaInput.dataset.filled = '1';
+    fechaInput.value = new Date().toISOString().slice(0, 10);
+
+    const fileInput = document.getElementById('descansoFileInput');
+    const fileNameLabel = document.getElementById('descansoFileName');
+    const previewBox = document.getElementById('descansoPreview');
+
+    document.getElementById('btnDescansoElegirArchivo').addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      fileNameLabel.textContent = file.name;
+      descansoParseado = null;
+      previewBox.innerHTML = '<div class="descanso-preview-box">Leyendo archivo…</div>';
+
+      try {
+        if (typeof XLSX === 'undefined') throw new Error('No se pudo cargar el lector de Excel (sin conexión al CDN).');
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const filasCrudas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+
+        // La fila de encabezados no siempre es la primera línea física del
+        // archivo (a veces hay una fila de título arriba) — se busca la
+        // primera fila que tenga "CEDULA" en alguna columna.
+        let idxHeader = filasCrudas.findIndex(fila =>
+          Array.isArray(fila) && fila.some(c => String(c || '').trim().toUpperCase() === 'CEDULA')
+        );
+        if (idxHeader === -1) throw new Error('No se encontró la columna CEDULA en el archivo. Verifica que sea la plantilla correcta.');
+
+        const headers = filasCrudas[idxHeader].map(h => String(h || '').trim().toUpperCase());
+        const colCedula = headers.indexOf('CEDULA');
+        const colNombre = headers.indexOf('NOMBRE');
+        const colDisponible = headers.indexOf('DISPONIBLE');
+        if (colDisponible === -1) throw new Error('No se encontró la columna DISPONIBLE en el archivo.');
+
+        const fecha = fechaInput.value.trim() || new Date().toISOString().slice(0, 10);
+        const peopleById = new Map(PEOPLE.map(p => [p.id, p]));
+        const conExcusa = [];
+        const sinCruzar = [];
+        let filasLeidas = 0;
+
+        for (let i = idxHeader + 1; i < filasCrudas.length; i++){
+          const fila = filasCrudas[i];
+          if (!fila || !fila.length) continue;
+          const cedulaRaw = fila[colCedula];
+          const cedula = normalizarCedulaExcel(cedulaRaw);
+          if (!cedula) continue; // fila vacía o sin cédula: se ignora
+          filasLeidas++;
+
+          const minutos = minutosDeCelda(fila[colDisponible]);
+          if (minutos === null || minutos < CORTE_DESCANSO_MIN) continue; // sin dato o sin excusa
+
+          const nombreExcel = colNombre !== -1 ? String(fila[colNombre] || '').trim() : '';
+          const p = peopleById.get(cedula);
+          if (!p){
+            sinCruzar.push({ cedula, nombre: nombreExcel });
+            continue;
+          }
+          conExcusa.push({ personId: cedula, nombre: p.nombre || nombreExcel, minutos });
+        }
+
+        descansoParseado = { fecha, filas: conExcusa };
+
+        const listaHtml = conExcusa.length
+          ? conExcusa
+              .sort((a, b) => a.nombre.localeCompare(b.nombre))
+              .map(f => `<div class="descanso-preview-item"><span>${f.nombre}</span><span>Disponible ${formatoHHMM(f.minutos)}</span></div>`)
+              .join('')
+          : '<div class="empty-state" style="padding:14px 8px;">Nadie en este archivo quedó disponible a las 6:05 a. m. o después.</div>';
+
+        const avisoSinCruzar = sinCruzar.length
+          ? `<div class="descanso-preview-warn">${sinCruzar.length} cédula(s) del archivo con excusa no se encontraron entre los colaboradores de este CD (revisa si son de otro CD o si la cédula está mal escrita) — no se van a guardar.</div>`
+          : '';
+
+        previewBox.innerHTML = `
+          <div class="descanso-preview-box">
+            <div class="descanso-preview-title">${filasLeidas} fila(s) leídas · ${conExcusa.length} con excusa para ${fecha}</div>
+            ${avisoSinCruzar}
+            <div class="descanso-preview-list">${listaHtml}</div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn-add" id="btnDescansoGuardar" style="flex:none;" ${conExcusa.length ? '' : 'disabled'}>Guardar ${conExcusa.length} excusa(s) para ${fecha}</button>
+              <button class="btn-secondary" id="btnDescansoCancelar" style="flex:none; padding:8px 14px; font-size:12px;">Cancelar</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btnDescansoCancelar').addEventListener('click', () => {
+          descansoParseado = null;
+          previewBox.innerHTML = '';
+          fileInput.value = '';
+          fileNameLabel.textContent = 'Ningún archivo elegido.';
+        });
+
+        document.getElementById('btnDescansoGuardar').addEventListener('click', async () => {
+          if (!descansoParseado) return;
+          const btn = document.getElementById('btnDescansoGuardar');
+          btn.disabled = true;
+          btn.textContent = 'Guardando…';
+          try {
+            await guardarDescansoEfectivo(descansoParseado);
+            previewBox.innerHTML = `<div class="descanso-preview-box">✓ Guardado: ${descansoParseado.filas.length} colaborador(es) con excusa para ${descansoParseado.fecha}.</div>`;
+            descansoParseado = null;
+            fileInput.value = '';
+            fileNameLabel.textContent = 'Ningún archivo elegido.';
+          } catch (e) {
+            console.error('No se pudo guardar Descanso Efectivo:', e);
+            btn.disabled = false;
+            btn.textContent = 'Reintentar guardar';
+            alert('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+          }
+        });
+      } catch (e) {
+        console.error('No se pudo leer el archivo de Descanso Efectivo:', e);
+        previewBox.innerHTML = `<div class="descanso-preview-box" style="color:var(--red-2);">No se pudo leer el archivo: ${e.message || e}</div>`;
+      }
+    });
+  }
+
+  // Guarda las excusas para (cd, fecha): primero borra lo que ya hubiera guardado
+  // para ese mismo día (por si es una re-carga con el archivo corregido — así
+  // nadie se queda con una excusa vieja que ya no aplica), y luego escribe la
+  // lista nueva. Id determinístico ${cd}_${fecha}_${personId} para que una
+  // persona nunca quede duplicada dentro del mismo día.
+  async function guardarDescansoEfectivo({ fecha, filas }){
+    const qExistentes = query(colDescansoEfectivo, where('cd', '==', selectedCD), where('fecha', '==', fecha));
+    const existentesSnap = await getDocs(qExistentes);
+    await Promise.all(existentesSnap.docs.map(d => deleteDoc(d.ref)));
+    await Promise.all(filas.map(f => setDoc(doc(colDescansoEfectivo, `${selectedCD}_${fecha}_${f.personId}`), {
+      cd: selectedCD,
+      fecha,
+      personId: f.personId,
+      nombre: f.nombre,
+      disponible: formatoHHMM(f.minutos),
+      rutinasExcusadas: RUTINAS_EXCUSABLES_DESCANSO,
+    })));
+  }
+
   function renderAdherenciaPorPersona(){
     fillAdherenciaPersonaFilters();
+    setupDescansoEfectivoUI();
     const fRutina = document.getElementById('adhpRutina').value;
     const fGrupo = document.getElementById('adhpGrupo').value;
     const fSemaforo = document.getElementById('adhpSemaforo').value;
@@ -3019,9 +3429,18 @@
       return porPersona[personId];
     };
     const getDia = (entry, fecha) => {
-      if (!entry.diasMap.has(fecha)) entry.diasMap.set(fecha, { fecha, asistioAlguna: false, detalle: [] });
+      if (!entry.diasMap.has(fecha)) entry.diasMap.set(fecha, { fecha, asistioAlguna: false, descanso: false, detalle: [] });
       return entry.diasMap.get(fecha);
     };
+
+    // Días con excusa por Descanso Efectivo (ver "Cargar Descanso Efectivo del día"
+    // arriba): personId+fecha con DISPONIBLE >= 6:05 a. m. ese día, dentro del
+    // mismo rango de fechas que el resto de esta vista.
+    const descansoSet = new Set(
+      DESCANSO_EFECTIVO_LOG
+        .filter(r => r.cd === selectedCD && fechaEnRango(r.fecha, fDesde, fHasta))
+        .map(r => r.personId + '|' + r.fecha)
+    );
 
     const sesionesVistas = new Set(); // personId|rutina|fecha, para no duplicar entre designados y asistencias
     desigCD.forEach(d => {
@@ -3051,17 +3470,25 @@
     // hacia atrás, en los que NO asistió a ninguna rutina. Se corta en el primer
     // día (yendo hacia atrás) en que sí cumplió. Los días sin ninguna rutina activa
     // para el grupo simplemente no existen en diasMap, así que no afectan la racha.
+    // Un día marcado "Descanso Efectivo" (excusa por descanso mínimo, solo aplica a
+    // las rutinas UC) tampoco afecta la racha: ni la corta ni la suma — se salta,
+    // igual que un día sin rutina activa — pero SÍ queda en el detalle para que se
+    // pueda auditar por qué no cuenta.
     const todasFilas = Object.values(porPersona).map(p => {
       const dias = [...p.diasMap.values()].sort((a, b) => b.fecha.localeCompare(a.fecha)); // más reciente primero
+      dias.forEach(d => { if (!d.asistioAlguna && descansoSet.has(p.personId + '|' + d.fecha)) d.descanso = true; });
       let racha = 0;
       for (const d of dias){
+        if (d.descanso) continue;
         if (d.asistioAlguna) break;
         racha++;
       }
-      const diasCumplidos = dias.filter(d => d.asistioAlguna).length;
+      const diasContables = dias.filter(d => !d.descanso);
+      const diasCumplidos = diasContables.filter(d => d.asistioAlguna).length;
+      const diasDescanso = dias.length - diasContables.length;
       return {
         personId: p.personId, nombre: p.nombre, cargo: p.cargo, grupo: p.grupo,
-        dias, diasOperativos: dias.length, diasCumplidos, racha, semaforo: semaforoDe(racha),
+        dias, diasOperativos: diasContables.length, diasCumplidos, diasDescanso, racha, semaforo: semaforoDe(racha),
       };
     });
 
@@ -3089,21 +3516,26 @@
     }
     tbody.innerHTML = filas.map((p, idx) => {
       const detalleId = 'adhpDet' + idx;
-      const filasDetalle = p.dias.map(d => `
+      const filasDetalle = p.dias.map(d => {
+        const estado = d.descanso ? 'descanso' : (d.asistioAlguna ? 'verde' : 'rojo');
+        const etiqueta = d.descanso ? 'Descanso Efectivo' : (d.asistioAlguna ? 'Cumplió' : 'No asistió a ninguna');
+        return `
         <div class="adhp-detail-item">
           <span style="color:var(--text-faint); font-size:12px; display:inline-block; width:92px;">${d.fecha}</span>
-          <span class="semaforo-pill ${d.asistioAlguna ? 'verde' : 'rojo'}"><span class="dot"></span>${d.asistioAlguna ? 'Cumplió' : 'No asistió a ninguna'}</span>
+          <span class="semaforo-pill ${estado}"><span class="dot"></span>${etiqueta}</span>
           <span style="margin-left:8px;">${d.detalle.map(x => `<span class="rutina-chip" style="${x.asistio ? '' : 'opacity:.55;'}">${x.rutina}${x.asistio ? ' ✓' : ''}</span>`).join(' ')}</span>
         </div>
-      `).join('');
+      `;
+      }).join('');
       const alerta = p.racha >= 3 ? ' <span class="pill red" style="margin-left:6px; white-space:nowrap;">⚠ Alerta</span>' : '';
+      const descansoBadge = p.diasDescanso > 0 ? ` <span class="pill" style="margin-left:4px; background:rgba(138,180,248,0.14); color:#8ab4f8; white-space:nowrap;">+${p.diasDescanso} descanso</span>` : '';
       return `
       <tr class="adhp-row" data-target="${detalleId}" style="cursor:pointer;">
         <td style="width:20px;"><svg class="adhp-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 6 15 12 9 18"/></svg></td>
         <td><div class="cell-name"><div class="cell-av">${initials(p.nombre)}</div><div><b>${p.nombre}</b></div></div></td>
         <td>${p.personId || '—'}</td>
         <td>${p.cargo || '—'}</td>
-        <td>${p.diasOperativos}</td>
+        <td>${p.diasOperativos}${descansoBadge}</td>
         <td>${p.diasCumplidos}</td>
         <td>${p.racha}${alerta}</td>
         <td><span class="semaforo-pill ${p.semaforo}"><span class="dot"></span>${SEMAFORO_LABEL[p.semaforo]}</span></td>
@@ -3127,6 +3559,399 @@
         if (caret) caret.style.transform = abierto ? '' : 'rotate(90deg)';
       });
     });
+  }
+
+  // ================= Carga de "Asignación real por ruta" (Excel NOMINAS) =================
+  // Lee el Excel "NOMINAS" (hoja del mismo nombre) enteramente en el navegador con
+  // SheetJS: dentro de una sola hoja hay dos bloques de título ("ZONA POBLACIÓN" /
+  // "ZONA METRO"), y cada uno trae 3 sub-bloques de columnas independientes
+  // (Conductor / Responsable de Reparto / Auxiliares), cada uno con su propia
+  // columna "CC" (cédula) y su propio largo de lista — no son filas alineadas.
+  // Se detecta todo esto dinámicamente (por texto de encabezado, no por letra de
+  // columna fija) para tolerar pequeños cambios de formato entre cargas.
+  let nominasParseado = null; // { vigenciaDesde, personas:[{personId,nombre,zona,rol}] } — pendiente de guardar
+
+  const ZONAS_TITULO = [
+    { match: /ZONA\s+POBLAC/i, zona: 'Poblaciones' },
+    { match: /ZONA\s+METRO/i, zona: 'Metro' },
+  ];
+  const ROLES_TITULO = [
+    { match: /^CONDUCTOR/i, rol: 'Conductor' },
+    { match: /RESPONSABLE\s+DE\s+REPARTO/i, rol: 'Responsable de Reparto' },
+    { match: /^AUXILIAR/i, rol: 'Auxiliar' },
+  ];
+
+  // Parsea la matriz cruda (filas x columnas, como entrega XLSX.utils.sheet_to_json
+  // con header:1) del layout NOMINAS. Devuelve { personas, avisos } — avisos son
+  // strings para mostrar en la previsualización (no detienen el parseo).
+  function parseNominasMatriz(filas){
+    const personas = [];
+    const avisos = [];
+    let zonaActual = null;
+    let colsRolActual = null; // se reutiliza entre zonas si una zona no trae su propia fila de encabezados
+
+    const detectarColsRol = (fila) => {
+      const colsRol = [];
+      fila.forEach((celda, colIdx) => {
+        const txt = String(celda || '').trim();
+        const rolMatch = ROLES_TITULO.find(r => r.match.test(txt));
+        if (rolMatch) colsRol.push({ rol: rolMatch.rol, colNombre: colIdx });
+      });
+      if (colsRol.length < 2) return null;
+      colsRol.forEach(b => {
+        let colCC = -1;
+        for (let c = b.colNombre; c >= 0; c--){
+          if (String(fila[c] || '').trim().toUpperCase() === 'CC'){ colCC = c; break; }
+        }
+        b.colCC = colCC;
+      });
+      return colsRol;
+    };
+
+    const leerBloqueDatos = (iInicio) => {
+      let j = iInicio;
+      for (; j < filas.length; j++){
+        const filaDatos = filas[j] || [];
+        const primeraDatos = String(filaDatos[0] || '').trim();
+        if (ZONAS_TITULO.some(z => z.match.test(primeraDatos))) break; // siguiente zona
+        if (detectarColsRol(filaDatos)) break; // fila de encabezados de otro bloque
+        const algunaCeldaConDato = colsRolActual.some(b => {
+          const cc = b.colCC !== -1 ? filaDatos[b.colCC] : null;
+          const nom = filaDatos[b.colNombre];
+          return (cc !== null && cc !== undefined && String(cc).trim() !== '') ||
+                 (nom !== null && nom !== undefined && String(nom).trim() !== '');
+        });
+        if (!algunaCeldaConDato) break; // fila totalmente vacía en los 3 bloques → fin de la sección
+
+        colsRolActual.forEach(b => {
+          const cedulaRaw = b.colCC !== -1 ? filaDatos[b.colCC] : null;
+          const cedula = normalizarCedulaExcel(cedulaRaw);
+          const nombreRaw = filaDatos[b.colNombre];
+          const nombre = String(nombreRaw == null ? '' : nombreRaw).trim();
+          if (!cedula && !nombre) return; // celda vacía de este bloque en esta fila (los 3 bloques no siempre tienen el mismo largo)
+          if (!cedula){
+            avisos.push(`Fila ${j + 1}, ${b.rol} (${zonaActual}): hay nombre ("${nombre}") pero sin cédula válida — no se puede cruzar, se ignora.`);
+            return;
+          }
+          if (!/^\d{5,12}$/.test(cedula)){
+            avisos.push(`Fila ${j + 1}, ${b.rol} (${zonaActual}): cédula "${cedulaRaw}" no parece válida — se ignora.`);
+            return;
+          }
+          personas.push({ personId: cedula, nombre: nombre || cedula, zona: zonaActual, rol: b.rol });
+        });
+      }
+      return j;
+    };
+
+    for (let i = 0; i < filas.length; i++){
+      const fila = filas[i] || [];
+      const primeraCelda = String(fila[0] || '').trim();
+
+      // ¿Esta fila anuncia el inicio de una zona? (título en la primera columna,
+      // p.ej. "ZONA POBLACIÓN" o "GRUPO EMPRESARIAL ... ZONA METRO"). Cuando
+      // cambia la zona, busca su propia fila de encabezados en lo que sigue
+      // (hasta 5 filas adelante); si no la encuentra (como en el bloque Metro
+      // de NOMINAS, que reutiliza el layout del bloque Población sin repetir
+      // encabezados), sigue usando los últimos colsRolActual conocidos.
+      const zonaMatch = ZONAS_TITULO.find(z => z.match.test(primeraCelda));
+      if (zonaMatch){
+        zonaActual = zonaMatch.zona;
+        for (let k = i + 1; k < Math.min(i + 6, filas.length); k++){
+          const posiblesCols = detectarColsRol(filas[k] || []);
+          if (posiblesCols){ colsRolActual = posiblesCols; i = k; break; }
+        }
+        continue;
+      }
+
+      if (!zonaActual) continue; // aún no se ha visto ningún título de zona
+
+      // ¿Esta fila trae su propia fila de encabezados (columnas 'CC' + nombre de
+      // rol), aun sin ir precedida de un título de zona nuevo (por ejemplo si el
+      // archivo trae varios sub-bloques dentro de la misma zona)?
+      const colsRolFila = detectarColsRol(fila);
+      if (colsRolFila){
+        colsRolActual = colsRolFila;
+        if (colsRolActual.some(b => b.colCC === -1)){
+          avisos.push(`No se encontró la columna "CC" para uno de los roles en la fila ${i + 1} — esa zona podría no leerse bien.`);
+        }
+        i = leerBloqueDatos(i + 1) - 1; // continuar el for externo justo después del bloque de datos
+        continue;
+      }
+
+      // No es título de zona ni encabezado, pero ya hay una zona y unas columnas
+      // de rol conocidas (reutilizadas de una zona anterior, como Metro en
+      // NOMINAS): esta fila ya puede ser la primera fila de datos. Si el bloque
+      // resulta vacío (leerBloqueDatos no avanza nada, p.ej. una fila totalmente
+      // vacía entre secciones), se deja que el "i++" normal del for avance una
+      // sola fila, para no quedar en un ciclo infinito sin avanzar nunca.
+      if (colsRolActual){
+        const fin = leerBloqueDatos(i);
+        if (fin > i) i = fin - 1;
+      }
+    }
+
+    // Duplicados: la misma cédula puede aparecer más de una vez dentro de la
+    // MISMA zona (por ejemplo si quedó mal cargada en dos roles a la vez) — se
+    // deja constancia mas no se descarta (personasAsignadasZona ya deduplica al
+    // usarlo, quedándose con la primera aparición).
+    const vistos = new Map(); // personId|zona -> count
+    personas.forEach(p => {
+      const key = p.personId + '|' + p.zona;
+      vistos.set(key, (vistos.get(key) || 0) + 1);
+    });
+    vistos.forEach((count, key) => {
+      if (count > 1){
+        const [cedula, zona] = key.split('|');
+        avisos.push(`La cédula ${cedula} aparece ${count} veces en Zona ${zona} (en distintos roles) — se cuenta una sola vez.`);
+      }
+    });
+
+    return { personas, avisos };
+  }
+
+  function setupAsignacionRutaUI(){
+    const fechaInput = document.getElementById('nominasFecha');
+    if (fechaInput.dataset.filled) return;
+    fechaInput.dataset.filled = '1';
+    fechaInput.value = new Date().toISOString().slice(0, 10);
+
+    const fileInput = document.getElementById('nominasFileInput');
+    const fileNameLabel = document.getElementById('nominasFileName');
+    const previewBox = document.getElementById('nominasPreview');
+
+    document.getElementById('btnNominasElegirArchivo').addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      fileNameLabel.textContent = file.name;
+      nominasParseado = null;
+      previewBox.innerHTML = '<div class="descanso-preview-box">Leyendo archivo…</div>';
+
+      try {
+        if (typeof XLSX === 'undefined') throw new Error('No se pudo cargar el lector de Excel (sin conexión al CDN).');
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        // Prioriza una hoja llamada "NOMINAS"; si no existe (archivo renombrado
+        // o reestructurado), cae a la primera hoja del libro.
+        const nombreHoja = wb.SheetNames.find(n => /NOMINA/i.test(n)) || wb.SheetNames[0];
+        const ws = wb.Sheets[nombreHoja];
+        const filasCrudas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+
+        const { personas, avisos } = parseNominasMatriz(filasCrudas);
+        if (personas.length === 0) throw new Error(`No se encontraron filas de asignación reconocibles en la hoja "${nombreHoja}". Verifica que sea la plantilla correcta (con títulos "ZONA POBLACIÓN" / "ZONA METRO" y columnas CC/Conductor/Responsable de Reparto/Auxiliares).`);
+
+        const vigenciaDesde = fechaInput.value.trim() || new Date().toISOString().slice(0, 10);
+        // Cruce informativo contra colaboradores de este CD (no bloquea el guardado:
+        // alguien puede entrar a colaboradores después de esta carga).
+        const peopleById = new Map(PEOPLE.map(p => [p.id, p]));
+        const sinCruzar = personas.filter(p => !peopleById.has(p.personId));
+
+        nominasParseado = { vigenciaDesde, personas };
+
+        const porZona = { Poblaciones: personas.filter(p => p.zona === 'Poblaciones'), Metro: personas.filter(p => p.zona === 'Metro') };
+        const uniqZona = z => new Set(porZona[z].map(p => p.personId)).size;
+
+        const listaHtml = ['Poblaciones', 'Metro'].map(zona => `
+          <div class="descanso-preview-title" style="margin-top:10px;">Zona ${zona}: ${uniqZona(zona)} persona(s) única(s) (${porZona[zona].length} registro(s) por rol)</div>
+          <div class="descanso-preview-list">
+            ${porZona[zona].slice(0, 200).map(p => `<div class="descanso-preview-item"><span>${p.nombre}</span><span>${p.rol} · ${p.personId}</span></div>`).join('') || '<div class="empty-state" style="padding:10px 8px;">Sin datos para esta zona.</div>'}
+          </div>
+        `).join('');
+
+        const avisosHtml = [
+          ...avisos,
+          ...(sinCruzar.length ? [`${sinCruzar.length} cédula(s) del archivo no se encontraron entre los colaboradores de este CD (revisa si son de otro CD, si la persona ya no está activa, o si la cédula está mal escrita) — igual se guardan, pero no aparecerán en el gráfico hasta que existan en Colaboradores.`] : []),
+        ].map(a => `<div class="descanso-preview-warn">${a}</div>`).join('');
+
+        previewBox.innerHTML = `
+          <div class="descanso-preview-box">
+            <div class="descanso-preview-title">${personas.length} registro(s) leído(s) · vigente desde ${vigenciaDesde}</div>
+            ${avisosHtml}
+            ${listaHtml}
+            <div style="display:flex; gap:10px; margin-top:10px;">
+              <button class="btn-add" id="btnNominasGuardar" style="flex:none;">Guardar asignación vigente desde ${vigenciaDesde}</button>
+              <button class="btn-secondary" id="btnNominasCancelar" style="flex:none; padding:8px 14px; font-size:12px;">Cancelar</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btnNominasCancelar').addEventListener('click', () => {
+          nominasParseado = null;
+          previewBox.innerHTML = '';
+          fileInput.value = '';
+          fileNameLabel.textContent = 'Ningún archivo elegido.';
+        });
+
+        document.getElementById('btnNominasGuardar').addEventListener('click', async () => {
+          if (!nominasParseado) return;
+          const btn = document.getElementById('btnNominasGuardar');
+          btn.disabled = true;
+          btn.textContent = 'Guardando…';
+          try {
+            await guardarAsignacionRuta(nominasParseado);
+            previewBox.innerHTML = `<div class="descanso-preview-box">✓ Guardado: asignación vigente desde ${nominasParseado.vigenciaDesde} (${nominasParseado.personas.length} registros).</div>`;
+            nominasParseado = null;
+            fileInput.value = '';
+            fileNameLabel.textContent = 'Ningún archivo elegido.';
+          } catch (e) {
+            console.error('No se pudo guardar la asignación de ruta:', e);
+            btn.disabled = false;
+            btn.textContent = 'Reintentar guardar';
+            alert('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+          }
+        });
+      } catch (e) {
+        console.error('No se pudo leer el archivo NOMINAS:', e);
+        previewBox.innerHTML = `<div class="descanso-preview-box" style="color:var(--red-2);">No se pudo leer el archivo: ${e.message || e}</div>`;
+      }
+    });
+  }
+
+  // Guarda UNA VERSIÓN completa con id determinístico ${cd}_${vigenciaDesde}: si
+  // se vuelve a subir el mismo día de vigencia (p.ej. para corregir un error),
+  // el setDoc sobrescribe esa misma versión en vez de duplicarla. Versiones con
+  // otra fecha de vigencia NO se tocan — cada una queda como su propio "corte"
+  // histórico (ver asignacionVigenteEnFecha).
+  async function guardarAsignacionRuta({ vigenciaDesde, personas }){
+    await setDoc(doc(colAsignacionesRuta, `${selectedCD}_${vigenciaDesde}`), {
+      cd: selectedCD,
+      vigenciaDesde,
+      creadoEn: new Date().toISOString(),
+      personas,
+    });
+  }
+
+  // ================= Gráfico "Adherencia real por ruta" (barras apiladas) =================
+  // Por cada día hábil del rango, y por cada zona (Poblaciones/Metro): total
+  // asignado = personas únicas en la asignación vigente ESE día; de esas,
+  // Asistieron = marcaron QR en CUALQUIER matinal ese día (no solo la suya,
+  // porque el escaneo es libre); Excusa = las que no asistieron pero tienen
+  // Descanso Efectivo ese día; Faltaron = el resto.
+  function rangoDiasHabiles(desde, hasta){
+    const out = [];
+    let d = new Date(desde + 'T00:00:00');
+    const fin = new Date(hasta + 'T00:00:00');
+    while (d <= fin){
+      const dow = d.getDay(); // 0=domingo, 6=sábado
+      if (dow !== 0 && dow !== 6) out.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  function ultimosDiasHabiles(n){
+    const out = [];
+    let d = new Date();
+    while (out.length < n){
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) out.unshift(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() - 1);
+    }
+    return out;
+  }
+
+  function setupAdherenciaRutaFiltros(){
+    const desde = document.getElementById('adhrFechaDesde');
+    if (desde.dataset.filled) return;
+    desde.dataset.filled = '1';
+    [desde, document.getElementById('adhrFechaHasta')].forEach(inp => inp.addEventListener('change', renderAdherenciaRuta));
+    document.getElementById('btnAdhrLimpiarFechas').addEventListener('click', () => {
+      desde.value = '';
+      document.getElementById('adhrFechaHasta').value = '';
+      renderAdherenciaRuta();
+    });
+  }
+
+  function renderAdherenciaRuta(){
+    setupAdherenciaRutaFiltros();
+    setupAsignacionRutaUI();
+
+    const fDesde = document.getElementById('adhrFechaDesde').value.trim();
+    const fHasta = document.getElementById('adhrFechaHasta').value.trim();
+    const dias = (fDesde && fHasta) ? rangoDiasHabiles(fDesde, fHasta) : ultimosDiasHabiles(10);
+
+    const wrap = document.getElementById('adhrChartWrap');
+
+    if (ASIGNACION_RUTA_LOG.filter(v => v.cd === selectedCD).length === 0){
+      wrap.innerHTML = '<div class="empty-state">Aún no has cargado ninguna asignación por ruta (NOMINAS) para este CD — sube el Excel arriba para ver el gráfico.</div>';
+      return;
+    }
+
+    // Descanso Efectivo: personId+fecha con excusa (ya excluye "sin dato" al
+    // guardar — ver guardarDescansoEfectivo).
+    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+
+    // Un día "cuenta" para el gráfico solo si ya había una carga vigente esa
+    // fecha (si no, no hay "asignados" que graficar y el día se omite).
+    const datosPorDia = dias.map(fecha => {
+      const v = asignacionVigenteEnFecha(selectedCD, fecha);
+      if (!v) return null;
+      const resultado = { fecha };
+      ['Poblaciones', 'Metro'].forEach(zona => {
+        const asignadosIds = new Set(v.personas.filter(p => p.zona === zona).map(p => p.personId));
+        let asistieron = 0, excusa = 0;
+        asignadosIds.forEach(personId => {
+          const marco = ATTENDANCE_LOG.some(a => a.cd === selectedCD && a.fecha === fecha && a.personId === personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
+          if (marco){ asistieron++; return; }
+          if (descansoSet.has(personId + '|' + fecha)) excusa++;
+        });
+        const total = asignadosIds.size;
+        const faltaron = Math.max(total - asistieron - excusa, 0);
+        resultado[zona] = { total, asistieron, excusa, faltaron };
+      });
+      return resultado;
+    }).filter(Boolean);
+
+    if (datosPorDia.length === 0){
+      wrap.innerHTML = '<div class="empty-state">Ninguno de los días de este rango tiene todavía una asignación vigente (son anteriores a tu primera carga) — ajusta el rango de fechas o carga una versión con vigencia más antigua.</div>';
+      return;
+    }
+
+    const maxTotal = Math.max(1, ...datosPorDia.flatMap(d => [d.Poblaciones.total, d.Metro.total]));
+    const alturaMaxPx = 200;
+    // Altura del contenedor de la barra, proporcional a su total frente al
+    // total más grande del rango visible (así todas las barras son comparables
+    // entre sí, no solo dentro de su propio día).
+    const alturaColPx = (total) => Math.max(Math.round((total / maxTotal) * alturaMaxPx), total > 0 ? 6 : 2);
+    // Los 3 segmentos dentro de una barra siempre sí suman 100% de SU PROPIA
+    // altura (no de maxTotal) — así se ve la composición interna aunque la
+    // barra sea más chica que otras.
+    const segHtml = (seg) => {
+      const total = seg.total;
+      if (total === 0) return '<div class="adhr-seg" style="height:100%; background:var(--surface-2);"></div>';
+      const pct = (v) => (v / total) * 100;
+      return `
+        <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron}"></div>
+        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa}"></div>
+        <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron}"></div>
+      `;
+    };
+
+    wrap.innerHTML = `
+      <div class="adhr-legend">
+        <div class="adhr-legend-item"><span class="adhr-legend-dot asistio"></span>Asistieron (QR)</div>
+        <div class="adhr-legend-item"><span class="adhr-legend-dot excusa"></span>Excusa (Descanso Efectivo)</div>
+        <div class="adhr-legend-item"><span class="adhr-legend-dot falto"></span>Faltaron</div>
+      </div>
+      <div class="adhr-chart">
+        ${datosPorDia.map(d => `
+          <div class="adhr-day">
+            <div class="adhr-day-cols">
+              <div>
+                <div class="adhr-col" style="height:${alturaColPx(d.Poblaciones.total)}px;">${segHtml(d.Poblaciones)}</div>
+                <div class="adhr-col-label">Población<br>${d.Poblaciones.asistieron}+${d.Poblaciones.excusa}+${d.Poblaciones.faltaron} de ${d.Poblaciones.total}</div>
+              </div>
+              <div>
+                <div class="adhr-col" style="height:${alturaColPx(d.Metro.total)}px;">${segHtml(d.Metro)}</div>
+                <div class="adhr-col-label">Metro<br>${d.Metro.asistieron}+${d.Metro.excusa}+${d.Metro.faltaron} de ${d.Metro.total}</div>
+              </div>
+            </div>
+            <div class="adhr-day-label">${d.fecha}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
   }
 
   // ================= Exportar Asistencias / Designados a CSV (para Excel / Power BI) =================
@@ -3465,8 +4290,28 @@
   // renderTurnos, que ahora es una vista en vivo del registro real, no de
   // asignación previa). El turno A/B/C lo decide el supervisor en el wizard
   // y se guarda en cada marca de asistencia (ver logAttendance).
+  //
+  // Para 'Matinal Poblaciones' y 'Matinal Metro' esto sigue devolviendo TODO
+  // el grupo UC a propósito (el escaneo NUNCA se restringe por asignación —
+  // pedido explícito del admin: "todos los trabajadores pueden marcar
+  // asistencia en cualquier matinal"). Lo que sí cambia con la asignación real
+  // es el DENOMINADOR que se muestra (ver designadosParaVistaRutina) y qué se
+  // guarda como "designados" de la sesión (ver logDesignations).
   function personsForLeaderRutina(rutina, cd){
     return PEOPLE.filter(p => p.cd === cd && rutinasDeColaborador(p).includes(rutina));
+  }
+
+  // Para pantallas/conteos (denominador de "ya registrados hoy", designados
+  // que se guardan por sesión): en Población/Metro usa la asignación real
+  // vigente ese día si ya hay una carga; si todavía no hay ninguna, cae de
+  // vuelta a todo el grupo UC (mismo comportamiento de siempre) para no
+  // mostrar "0 asignados" antes de la primera carga del Excel NOMINAS.
+  function designadosParaVistaRutina(rutina, cd, fecha){
+    if (RUTINA_A_ZONA[rutina]){
+      const v = asignacionVigenteEnFecha(cd, fecha);
+      if (v) return designadosZonaEnFecha(rutina, cd, fecha);
+    }
+    return personsForLeaderRutina(rutina, cd);
   }
 
   function selectLeaderRutina(rutina, user, turnoElegido){
@@ -3486,7 +4331,7 @@
       ? `Esta rutina es de lunes a viernes. Hoy es fin de semana: lo que marques aquí no quedará registrado en Adherencia.`
       : `Horario: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''} · Ventana de llegada a tiempo: ${info.ventana || 15} min`;
 
-    logDesignations(rutina, user.cd, personsForLeaderRutina(rutina, user.cd));
+    logDesignations(rutina, user.cd, designadosParaVistaRutina(rutina, user.cd, hoy));
     renderLeaderTable(user.cd, '');
     updateLeaderStats(user.cd);
     refrescarFotoBar();
@@ -3501,7 +4346,14 @@
   }
 
   function updateLeaderStats(cd){
-    const total = personsForLeaderRutina(leaderState.rutina, cd).length;
+    const hoy = new Date().toISOString().slice(0, 10);
+    // 'Entrenamiento UC' sigue sin lista fija de asignados (todo el grupo UC
+    // puede entrar), pero su META (el "total" contra el que se calculan
+    // pendientes) ya no es el conteo bruto del grupo UC, sino la unión de
+    // asignados a Población+Metro en la carga vigente (ver metaEntrenamientoUC).
+    const total = leaderState.rutina === 'Entrenamiento UC'
+      ? metaEntrenamientoUC(cd, hoy)
+      : designadosParaVistaRutina(leaderState.rutina, cd, hoy).length;
     let ok = 0, late = 0;
     Object.values(leaderState.marks).forEach(m => { if (m.status === 'ok') ok++; else if (m.status === 'late') late++; });
     document.getElementById('statOk').textContent = ok;
@@ -3524,7 +4376,9 @@
     const hoy = new Date().toISOString().slice(0, 10);
     const cd = currentUser.cd;
     const rutina = leaderState.rutina;
-    const designados = personsForLeaderRutina(rutina, cd);
+    const designados = designadosParaVistaRutina(rutina, cd, hoy);
+    const zonaRutina = RUTINA_A_ZONA[rutina];
+    const zonaAsignadaMap = zonaRutina ? mapaZonaAsignadaEnFecha(cd, hoy) : null;
 
     let registros = ATTENDANCE_LOG.filter(r => r.cd === cd && r.rutina === rutina && r.fecha === hoy);
     // Si la rutina usa turnos rotativos, esta lista muestra solo lo marcado EN
@@ -3540,19 +4394,34 @@
 
     // El denominador es el total de personas que pueden marcar esta rutina
     // (todo el grupo OL), no solo las de este turno: como cualquiera puede
-    // entrar a cualquier turno, ya no hay un cupo fijo por turno.
-    countEl.textContent = `${registros.length} de ${designados.length}`;
+    // entrar a cualquier turno, ya no hay un cupo fijo por turno. Para
+    // 'Entrenamiento UC' el denominador es la meta recalculada (ver
+    // metaEntrenamientoUC), no el conteo bruto del grupo UC.
+    const denominador = rutina === 'Entrenamiento UC' ? metaEntrenamientoUC(cd, hoy) : designados.length;
+    countEl.textContent = `${registros.length} de ${denominador}`;
 
     if (!registros.length){
       listEl.innerHTML = '<div class="registrados-empty">Nadie registrado todavía en esta rutina.</div>';
       return;
     }
-    listEl.innerHTML = registros.map(r => `
+    listEl.innerHTML = registros.map(r => {
+      // Si esta rutina es Población o Metro, y la persona tenía asignada la
+      // OTRA zona ese día (según la carga vigente), se avisa con una etiqueta —
+      // el escaneo nunca se bloquea por esto, solo se deja constancia (pedido
+      // explícito del admin: "que me diga si estaba asignado a otra y entró a
+      // la otra").
+      const zonaAsig = zonaAsignadaMap ? zonaAsignadaMap.get(r.personId) : null;
+      const cruzado = zonaRutina && zonaAsig && zonaAsig !== zonaRutina;
+      const avisoZona = cruzado
+        ? ` <span class="pill" style="margin-left:4px; background:rgba(240,180,60,0.16); color:#f0b43c; white-space:nowrap;" title="Estaba asignado a Zona ${zonaAsig}">⚠ asignado a ${ZONA_A_RUTINA[zonaAsig]}</span>`
+        : '';
+      return `
       <div class="registrados-row">
-        <div class="rr-name"><span class="rr-badge ${r.status === 'ok' ? 'ok' : 'late'}"></span>${r.nombre || r.personId}</div>
+        <div class="rr-name"><span class="rr-badge ${r.status === 'ok' ? 'ok' : 'late'}"></span>${r.nombre || r.personId}${avisoZona}</div>
         <span class="rr-time">${r.time || '—'}</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   // ================= Evidencia fotográfica de la rutina =================
@@ -4038,6 +4907,7 @@
       else if (tabId === 'tabTurnos') renderTurnos();
       else if (tabId === 'tabAdherencia') renderAdherencia();
       else if (tabId === 'tabAdherenciaPersona') renderAdherenciaPorPersona();
+      else if (tabId === 'tabAdherenciaRuta') renderAdherenciaRuta();
       else if (!tabId) renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin));
       else renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin)); // KPIs de la portada dependen de PEOPLE también
     }

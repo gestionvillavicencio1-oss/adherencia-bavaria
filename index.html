@@ -1429,14 +1429,8 @@
         </label>
         <button class="btn-secondary" id="btnAdhrLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Últimos 10 días hábiles</button>
       </div>
-      <div class="adhr-avg-summary" id="adhrAvgSummary"></div>
-      <div id="adhrAvgHoraWrap"></div>
-      <div id="adhrChartWrap"></div>
-      <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes). Haz clic en cualquier segmento de una barra para ver el detalle de personas de ese día/zona/categoría.</p>
-      <div class="adhr-detail" id="adhrDetail" style="display:none;"></div>
-      <div class="adhr-top-wrap" id="adhrTopWrap"></div>
 
-      <div class="adhr-cmp-card">
+      <div class="adhr-cmp-card" style="margin-top:0;">
         <div class="section-head">
           <div class="section-title" style="font-size:15px;">Comparar dos fechas (estilo think-cell)</div>
         </div>
@@ -1453,6 +1447,16 @@
         </div>
         <div id="adhrCmpWrap"></div>
       </div>
+
+      <div class="section-head" style="margin-top:28px;">
+        <div class="section-title" style="font-size:15px;">Comparativo por barras agrupadas (por día)</div>
+      </div>
+      <div class="adhr-avg-summary" id="adhrAvgSummary"></div>
+      <div id="adhrAvgHoraWrap"></div>
+      <div id="adhrChartWrap"></div>
+      <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes). Haz clic en cualquier segmento de una barra para ver el detalle de personas de ese día/zona/categoría.</p>
+      <div class="adhr-detail" id="adhrDetail" style="display:none;"></div>
+      <div class="adhr-top-wrap" id="adhrTopWrap"></div>
     </div>
 
     <!-- =============== TAB: Encuestas ABI =============== -->

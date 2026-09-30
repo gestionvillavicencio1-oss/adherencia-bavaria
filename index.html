@@ -4090,6 +4090,11 @@
   // estado) para que el clic en un segmento pueda armar la lista sin volver a
   // recorrer todo — se recalcula en cada render junto con datosPorDia.
   let ADHR_DETALLE_CACHE = {};
+  // Último día/zonas graficados, para poder recalcular el promedio general de
+  // hora de marcación cuando se vuelve del promedio "de un día" (clic en
+  // barra verde) al promedio del rango/zona completos, sin tener que rehacer
+  // todo el render.
+  let ADHR_ULTIMO_RANGO = { datosPorDia: [], zonasAMostrar: [] };
 
   function renderAdherenciaRuta(){
     setupAdherenciaRutaFiltros();
@@ -4136,14 +4141,25 @@
           if (marca){ asistieron++; estado = 'Asistió'; }
           else if (descansoSet.has(p.personId + '|' + fecha)){ excusa++; estado = 'Excusa (Descanso Efectivo)'; }
           else { estado = 'Faltó'; }
-          // horaMarcacion/statusMarcacion solo existen si asistió — vienen del
-          // mismo registro de ATTENDANCE_LOG ('ok' = a tiempo dentro de la
-          // ventana de 15 min configurada en RUTINA_INFO, 'late' = después).
+          // horaMarcacion solo existe si asistió. statusMarcacion NO se toma
+          // directo de ATTENDANCE_LOG.status: ese status se calculó contra la
+          // ventana de la rutina donde la persona marcó en verdad (puede ser
+          // "Matinal Metro" aunque esta columna sea Población, porque el
+          // escaneo es libre). Aquí recalculamos el semáforo contra la
+          // ventana de ESTA columna/zona (Población: 5:30-5:45, Metro:
+          // 6:00-6:15) para que el color siempre refleje la ventana correcta
+          // sin importar en qué matinal haya marcado realmente.
+          const minutosMarcacion = marca ? parseHoraAMPMaMinutos(marca.time) : null;
+          const infoZona = RUTINA_INFO[ZONA_A_RUTINA[zona]];
+          const limiteZona = infoZona ? infoZona.inicioMin + (infoZona.ventana || 15) : null;
+          const statusMarcacion = (minutosMarcacion !== null && limiteZona !== null)
+            ? (minutosMarcacion <= limiteZona ? 'ok' : 'late')
+            : (marca ? marca.status : null);
           detalle.push({
             personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado,
             horaMarcacion: marca ? marca.time : null,
-            statusMarcacion: marca ? marca.status : null,
-            minutosMarcacion: marca ? parseHoraAMPMaMinutos(marca.time) : null,
+            statusMarcacion,
+            minutosMarcacion,
           });
         });
         const total = asignados.length;
@@ -4214,9 +4230,11 @@
       });
     });
 
+    ADHR_ULTIMO_RANGO = { datosPorDia, zonasAMostrar };
     renderAdhrPromedios(datosPorDia, zonasAMostrar);
     renderAdhrTopAusencias(datosPorDia, zonasAMostrar);
     renderAdhrComparacion();
+    renderAdhrPromedioHoraDefault();
   }
 
   // Tarjeta con los 3 promedios (Asistieron/Excusa/Faltaron) del rango visible
@@ -4233,10 +4251,51 @@
       <div class="adhr-avg-card"><span class="adhr-avg-dot excusa"></span><div><div class="adhr-avg-num">${prom(sExcusa)}</div><div class="adhr-avg-label">Promedio excusa / día</div></div></div>
       <div class="adhr-avg-card"><span class="adhr-avg-dot falto"></span><div><div class="adhr-avg-num">${prom(sFalto)}</div><div class="adhr-avg-label">Promedio faltaron / día</div></div></div>
     `;
-    // Tarjeta dinámica de hora promedio de marcación: se llena y se muestra
-    // solo cuando se hace clic en un segmento "Asistió" (verde) de la barra —
-    // ver mostrarDetalleAdhrSegmento — y se oculta con cualquier otro clic.
-    document.getElementById('adhrAvgHoraWrap').innerHTML = '';
+  }
+
+  // Etiqueta legible para el/los filtro(s) de zona actualmente visibles, para
+  // mostrar en la tarjeta de hora promedio ("Población", "Metro" o
+  // "Población + Metro" si el filtro de arriba es "Ambas").
+  function adhrZonaLabelVisible(zonasAMostrar){
+    const nombre = { Poblaciones: 'Población', Metro: 'Metro' };
+    return zonasAMostrar.map(z => nombre[z] || z).join(' + ');
+  }
+
+  // Dibuja la tarjeta de "Hora promedio de marcación" con un set de entradas
+  // de detalle ya filtradas (solo las de estado "Asistió" cuentan). Se
+  // reutiliza tanto para el promedio general del rango/zona visibles como
+  // para el promedio de un día específico al hacer clic en una barra verde.
+  function pintarAdhrPromedioHora(entradas, etiqueta){
+    const horaWrap = document.getElementById('adhrAvgHoraWrap');
+    const minutosValidos = entradas.map(p => p.minutosMarcacion).filter(m => m !== null && m !== undefined);
+    if (!minutosValidos.length){
+      horaWrap.innerHTML = '';
+      return;
+    }
+    const promedioMin = minutosValidos.reduce((a, b) => a + b, 0) / minutosValidos.length;
+    horaWrap.innerHTML = `
+      <div class="adhr-avg-card">
+        <span class="adhr-avg-dot" style="background:#7cd68a;"></span>
+        <div>
+          <div class="adhr-avg-num">${formatoHoraAMPM(promedioMin)}</div>
+          <div class="adhr-avg-label">Hora promedio de marcación — ${etiqueta}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Promedio de hora de marcación del RANGO Y ZONA(S) visibles actualmente
+  // (sin necesidad de hacer clic en ninguna barra) — se recalcula cada vez
+  // que cambian los filtros de fecha, zona o cargo. Solo cuenta a quienes
+  // asistieron, filtrados por la zona (Población/Metro/Ambas) elegida arriba.
+  function renderAdhrPromedioHoraDefault(){
+    const { datosPorDia, zonasAMostrar } = ADHR_ULTIMO_RANGO;
+    const entradas = [];
+    datosPorDia.forEach(d => zonasAMostrar.forEach(zona => {
+      const detalle = ADHR_DETALLE_CACHE[d.fecha + '|' + zona] || [];
+      detalle.forEach(p => { if (p.estado === 'Asistió') entradas.push(p); });
+    }));
+    pintarAdhrPromedioHora(entradas, `${adhrZonaLabelVisible(zonasAMostrar)} · rango visible`);
   }
 
   // Top de personas con más inasistencias reiterativas, contado SOLO dentro
@@ -4333,35 +4392,24 @@
         </table>
       </div>
     `;
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // No hacemos scroll automático: el detalle se llena debajo pero la
+    // pantalla se queda donde estaba (en el gráfico), tal como lo pidió el
+    // admin — antes bajaba solo al hacer clic.
     document.getElementById('btnAdhrExportDetalle').addEventListener('click', () => {
       const headers = ['Cedula', 'Nombre', 'RolAsignado', 'Estado', 'HoraMarcacion', 'Fecha', 'Zona'];
       const rows = detalle.map(p => [p.personId, p.nombre, p.cargo, p.estado, p.horaMarcacion || '', fecha, zonaLabel]);
       downloadCsv('detalle_ruta_' + fecha + '_' + zonaLabel + '_' + categoria.replace(/[^a-zA-Z0-9]+/g, '_') + '.csv', toCsv(headers, rows));
     });
 
-    // Tarjeta dinámica de hora promedio de marcación: solo si el segmento
-    // clicado fue "Asistió" (verde) — con cualquier otro (Faltó/Excusa)
-    // desaparece, tal como lo pidió el admin.
-    const horaWrap = document.getElementById('adhrAvgHoraWrap');
+    // Tarjeta de hora promedio de marcación: si el segmento clicado fue
+    // "Asistió" (verde), muestra el promedio de ESE día/zona puntual; con
+    // cualquier otro (Faltó/Excusa) vuelve a mostrar el promedio general del
+    // rango/zona visibles (no desaparece del todo, porque el admin también
+    // quiere verlo por defecto al solo cambiar el filtro de zona).
     if (esAsistio){
-      const minutosValidos = detalle.map(p => p.minutosMarcacion).filter(m => m !== null && m !== undefined);
-      if (minutosValidos.length){
-        const promedioMin = minutosValidos.reduce((a, b) => a + b, 0) / minutosValidos.length;
-        horaWrap.innerHTML = `
-          <div class="adhr-avg-card">
-            <span class="adhr-avg-dot" style="background:#7cd68a;"></span>
-            <div>
-              <div class="adhr-avg-num">${formatoHoraAMPM(promedioMin)}</div>
-              <div class="adhr-avg-label">Hora promedio de marcación — ${zonaLabel} · ${fecha}</div>
-            </div>
-          </div>
-        `;
-      } else {
-        horaWrap.innerHTML = '';
-      }
+      pintarAdhrPromedioHora(detalle, `${zonaLabel} · ${fecha}`);
     } else {
-      horaWrap.innerHTML = '';
+      renderAdhrPromedioHoraDefault();
     }
   }
 

@@ -734,9 +734,9 @@
   .adhr-legend-dot.asistio{background:#7cd68a;}
   .adhr-legend-dot.excusa{background:#8ab4f8;}
   .adhr-legend-dot.falto{background:#e8432f;}
-  .adhr-chart{display:flex; align-items:flex-end; gap:22px; overflow-x:auto; padding:10px 4px 0; min-height:260px;}
+  .adhr-chart{display:flex; align-items:flex-end; gap:22px; overflow-x:auto; padding:10px 4px 0; min-height:420px;}
   .adhr-day{display:flex; flex-direction:column; align-items:center; flex-shrink:0; min-width:96px;}
-  .adhr-day-cols{display:flex; align-items:flex-end; gap:8px; height:200px;}
+  .adhr-day-cols{display:flex; align-items:flex-end; gap:8px; height:360px;}
   .adhr-col{width:34px; display:flex; flex-direction:column-reverse; border-radius:4px 4px 0 0; overflow:hidden; background:var(--surface-2); border:1px solid var(--border); position:relative;}
   .adhr-seg{width:100%;}
   .adhr-seg.asistio{background:#7cd68a;}
@@ -765,6 +765,29 @@
   .adhr-top-rank{ width:22px; flex-shrink:0; color:var(--text-faint); font-weight:700; font-size:12px; }
   .adhr-top-name{ flex:1; min-width:0; }
   .adhr-top-count{ font-weight:700; color:#e8432f; flex-shrink:0; }
+  .adhr-top-toggle{ background:none; border:none; color:var(--text-faint); cursor:pointer; padding:2px 6px; font-size:11px; flex-shrink:0; }
+  .adhr-top-toggle:hover{ color:var(--text); }
+  .adhr-top-fechas{ padding:2px 4px 10px 32px; font-size:12px; color:var(--text-faint); }
+  .adhr-top-fechas ul{ margin:4px 0 0; padding-left:16px; }
+
+  /* Comparación think-cell entre 2 fechas */
+  .adhr-cmp-card{ margin-top:24px; }
+  .adhr-cmp-filters{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px; }
+  .adhr-cmp-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; }
+  @media (max-width:900px){ .adhr-cmp-grid{ grid-template-columns:1fr; } }
+  .adhr-cmp-panel{ background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:18px 16px 14px; display:flex; flex-direction:column; align-items:center; }
+  .adhr-cmp-title{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+  .adhr-cmp-bars{ display:flex; align-items:flex-end; justify-content:center; gap:34px; height:150px; width:100%; position:relative; }
+  .adhr-cmp-bar-col{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .adhr-cmp-bar{ width:46px; border-radius:5px 5px 0 0; }
+  .adhr-cmp-bar-val{ font-size:12px; font-weight:700; margin-bottom:4px; }
+  .adhr-cmp-bar-label{ font-size:10.5px; color:var(--text-faint); margin-top:6px; text-align:center; }
+  .adhr-cmp-arrow-wrap{ width:100%; display:flex; flex-direction:column; align-items:center; margin-top:14px; }
+  .adhr-cmp-delta-pill{ font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:100px; margin-bottom:2px; white-space:nowrap; }
+  .adhr-cmp-delta-pill.up{ background:rgba(124,214,138,0.16); color:#7cd68a; border:1px solid rgba(124,214,138,0.4); }
+  .adhr-cmp-delta-pill.down{ background:rgba(232,67,47,0.14); color:#e8432f; border:1px solid rgba(232,67,47,0.4); }
+  .adhr-cmp-delta-pill.flat{ background:var(--surface-2); color:var(--text-faint); border:1px solid var(--border); }
+  .adhr-cmp-arrow-svg{ width:90%; height:22px; }
   .adhr-tooltip-num{font-size:9.5px; color:var(--text-faint);}
   .adhp-row:hover{background:rgba(232,185,35,0.04);}
   .adhp-caret{transition:transform .12s ease; color:var(--text-faint);}
@@ -1389,6 +1412,12 @@
           <option value="Poblaciones">Solo Población</option>
           <option value="Metro">Solo Metro</option>
         </select>
+        <select id="adhrCargo">
+          <option value="">Todos los cargos</option>
+          <option value="Conductor">Conductor</option>
+          <option value="Responsable de Reparto">Responsable de Reparto</option>
+          <option value="Auxiliar">Auxiliar de Reparto</option>
+        </select>
         <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde
           <input type="date" id="adhrFechaDesde" style="width:120px;">
         </label>
@@ -1402,6 +1431,24 @@
       <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes). Haz clic en cualquier segmento de una barra para ver el detalle de personas de ese día/zona/categoría.</p>
       <div class="adhr-detail" id="adhrDetail" style="display:none;"></div>
       <div class="adhr-top-wrap" id="adhrTopWrap"></div>
+
+      <div class="adhr-cmp-card">
+        <div class="section-head">
+          <div class="section-title" style="font-size:15px;">Comparar dos fechas (estilo think-cell)</div>
+        </div>
+        <p class="hint-note" style="margin-bottom:10px;">Compara el comportamiento de Asistieron / Excusa / Faltaron entre dos días puntuales, respetando el filtro de zona de arriba. La fecha más antigua siempre va a la izquierda y la flecha muestra el cambio hacia la fecha más reciente.</p>
+        <div class="adhr-cmp-filters">
+          <button class="btn-secondary" id="btnAdhrCmpUltimos2" style="flex:none; padding:7px 12px; font-size:12px;">Últimos 2 días hábiles</button>
+          <button class="btn-secondary" id="btnAdhrCmpMesVsAnterior" style="flex:none; padding:7px 12px; font-size:12px;">Mes actual vs anterior</button>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha A
+            <input type="date" id="adhrCmpFechaA" style="width:130px;">
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha B
+            <input type="date" id="adhrCmpFechaB" style="width:130px;">
+          </label>
+        </div>
+        <div id="adhrCmpWrap"></div>
+      </div>
     </div>
 
     <!-- =============== TAB: Encuestas ABI =============== -->
@@ -3974,10 +4021,40 @@
     desde.dataset.filled = '1';
     [desde, document.getElementById('adhrFechaHasta')].forEach(inp => inp.addEventListener('change', renderAdherenciaRuta));
     document.getElementById('adhrZona').addEventListener('change', renderAdherenciaRuta);
+    document.getElementById('adhrCargo').addEventListener('change', renderAdherenciaRuta);
     document.getElementById('btnAdhrLimpiarFechas').addEventListener('click', () => {
       desde.value = '';
       document.getElementById('adhrFechaHasta').value = '';
       renderAdherenciaRuta();
+    });
+
+    // --- Comparación think-cell entre 2 fechas ---
+    const cmpA = document.getElementById('adhrCmpFechaA');
+    const cmpB = document.getElementById('adhrCmpFechaB');
+    [cmpA, cmpB].forEach(inp => inp.addEventListener('change', renderAdhrComparacion));
+    document.getElementById('adhrZona').addEventListener('change', renderAdhrComparacion);
+    document.getElementById('btnAdhrCmpUltimos2').addEventListener('click', () => {
+      const ult = ultimosDiasHabiles(2);
+      cmpA.value = ult[0];
+      cmpB.value = ult[1];
+      renderAdhrComparacion();
+    });
+    document.getElementById('btnAdhrCmpMesVsAnterior').addEventListener('click', () => {
+      const hoy = new Date();
+      const finMesAnt = new Date(hoy.getFullYear(), hoy.getMonth(), 0); // último día del mes anterior
+      const inicioMesAct = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      // Usamos como "fecha A" el último día hábil disponible del mes anterior
+      // y como "fecha B" el último día hábil disponible del mes actual (hoy o
+      // el hábil más reciente que no sea futuro) — comparación puntual, no de
+      // suma de todo el mes.
+      const ultimoHabilHasta = (limite) => {
+        let d = new Date(limite);
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+        return d.toISOString().slice(0, 10);
+      };
+      cmpA.value = ultimoHabilHasta(finMesAnt);
+      cmpB.value = ultimoHabilHasta(hoy);
+      renderAdhrComparacion();
     });
   }
 
@@ -3993,6 +4070,7 @@
     const fDesde = document.getElementById('adhrFechaDesde').value.trim();
     const fHasta = document.getElementById('adhrFechaHasta').value.trim();
     const fZona = document.getElementById('adhrZona').value; // 'ambas' | 'Poblaciones' | 'Metro'
+    const fCargo = document.getElementById('adhrCargo').value; // '' | 'Conductor' | 'Responsable de Reparto' | 'Auxiliar'
     const dias = (fDesde && fHasta) ? rangoDiasHabiles(fDesde, fHasta) : ultimosDiasHabiles(10);
     const zonasAMostrar = fZona === 'ambas' ? ['Poblaciones', 'Metro'] : [fZona];
 
@@ -4021,7 +4099,7 @@
       if (!v) return null;
       const resultado = { fecha };
       ['Poblaciones', 'Metro'].forEach(zona => {
-        const asignados = v.personas.filter(p => p.zona === zona);
+        const asignados = v.personas.filter(p => p.zona === zona && (!fCargo || p.rol === fCargo));
         let asistieron = 0, excusa = 0;
         const detalle = [];
         asignados.forEach(p => {
@@ -4048,7 +4126,7 @@
     }
 
     const maxTotal = Math.max(1, ...datosPorDia.flatMap(d => zonasAMostrar.map(z => d[z].total)));
-    const alturaMaxPx = 200;
+    const alturaMaxPx = 360;
     // Altura del contenedor de la barra, proporcional a su total frente al
     // total más grande del rango visible (así todas las barras son comparables
     // entre sí, no solo dentro de su propio día).
@@ -4102,6 +4180,7 @@
 
     renderAdhrPromedios(datosPorDia, zonasAMostrar);
     renderAdhrTopAusencias(datosPorDia, zonasAMostrar);
+    renderAdhrComparacion();
   }
 
   // Tarjeta con los 3 promedios (Asistieron/Excusa/Faltaron) del rango visible
@@ -4124,18 +4203,18 @@
   // del rango de fechas actualmente visible en el gráfico (cambia con los
   // filtros Desde/Hasta) — así lo pidió el admin explícitamente.
   function renderAdhrTopAusencias(datosPorDia, zonasAMostrar){
-    const conteo = new Map(); // personId -> {nombre, faltas}
+    const conteo = new Map(); // personId -> {nombre, fechas:[]}
     datosPorDia.forEach(d => zonasAMostrar.forEach(zona => {
       const detalle = ADHR_DETALLE_CACHE[d.fecha + '|' + zona] || [];
       detalle.forEach(p => {
         if (p.estado !== 'Faltó') return;
-        const actual = conteo.get(p.personId) || { nombre: p.nombre, faltas: 0 };
-        actual.faltas++;
+        const actual = conteo.get(p.personId) || { nombre: p.nombre, fechas: [] };
+        actual.fechas.push(d.fecha);
         conteo.set(p.personId, actual);
       });
     }));
     const top = [...conteo.entries()]
-      .map(([personId, v]) => ({ personId, nombre: v.nombre, faltas: v.faltas }))
+      .map(([personId, v]) => ({ personId, nombre: v.nombre, fechas: [...new Set(v.fechas)].sort(), faltas: new Set(v.fechas).size }))
       .filter(p => p.faltas > 0)
       .sort((a, b) => b.faltas - a.faltas || a.nombre.localeCompare(b.nombre))
       .slice(0, 20);
@@ -4151,16 +4230,30 @@
         <button class="btn-secondary" id="btnAdhrExportTop" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
       </div>
       ${top.map((p, i) => `
-        <div class="adhr-top-row">
-          <div class="adhr-top-rank">#${i + 1}</div>
-          <div class="adhr-top-name">${p.nombre} <span style="color:var(--text-faint); font-size:11.5px;">(${p.personId})</span></div>
-          <div class="adhr-top-count">${p.faltas} falta${p.faltas === 1 ? '' : 's'}</div>
+        <div>
+          <div class="adhr-top-row">
+            <div class="adhr-top-rank">#${i + 1}</div>
+            <div class="adhr-top-name">${p.nombre} <span style="color:var(--text-faint); font-size:11.5px;">(${p.personId})</span></div>
+            <div class="adhr-top-count">${p.faltas} falta${p.faltas === 1 ? '' : 's'}</div>
+            <button class="adhr-top-toggle" data-toggle="adhrTopFechas_${i}" title="Ver fechas">▾ fechas</button>
+          </div>
+          <div class="adhr-top-fechas" id="adhrTopFechas_${i}" style="display:none;">
+            <ul>${p.fechas.map(f => `<li>${f}</li>`).join('')}</ul>
+          </div>
         </div>
       `).join('')}
     `;
+    box.querySelectorAll('.adhr-top-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.toggle);
+        const abierto = target.style.display !== 'none';
+        target.style.display = abierto ? 'none' : '';
+        btn.textContent = abierto ? '▾ fechas' : '▴ fechas';
+      });
+    });
     document.getElementById('btnAdhrExportTop').addEventListener('click', () => {
-      const headers = ['Cedula', 'Nombre', 'Faltas_en_rango'];
-      const rows = top.map(p => [p.personId, p.nombre, p.faltas]);
+      const headers = ['Cedula', 'Nombre', 'Faltas_en_rango', 'Fechas_de_falta'];
+      const rows = top.map(p => [p.personId, p.nombre, p.faltas, p.fechas.join(' | ')]);
       downloadCsv('top_inasistencias_ruta_' + new Date().toISOString().slice(0,10) + '.csv', toCsv(headers, rows));
     });
   }
@@ -4197,6 +4290,103 @@
       const rows = detalle.map(p => [p.personId, p.nombre, p.cargo, p.estado, fecha, zonaLabel]);
       downloadCsv('detalle_ruta_' + fecha + '_' + zonaLabel + '_' + categoria.replace(/[^a-zA-Z0-9]+/g, '_') + '.csv', toCsv(headers, rows));
     });
+  }
+
+  // Totales Asistieron/Excusa/Faltaron para UNA fecha puntual, respetando el
+  // filtro de zona y de cargo activos arriba (suma las zonas visibles si el
+  // filtro es "ambas"). Reutiliza la misma definición de asistencia/excusa/
+  // falta que el gráfico principal. Devuelve null si esa fecha aún no tiene
+  // una asignación NOMINAS vigente.
+  function totalesAdhrEnFecha(fecha, zonasAMostrar, fCargo){
+    const v = asignacionVigenteEnFecha(selectedCD, fecha);
+    if (!v) return null;
+    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+    let asistieron = 0, excusa = 0, faltaron = 0, total = 0;
+    zonasAMostrar.forEach(zona => {
+      const asignados = v.personas.filter(p => p.zona === zona && (!fCargo || p.rol === fCargo));
+      asignados.forEach(p => {
+        const marco = ATTENDANCE_LOG.some(a => a.cd === selectedCD && a.fecha === fecha && a.personId === p.personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
+        if (marco) asistieron++;
+        else if (descansoSet.has(p.personId + '|' + fecha)) excusa++;
+        else faltaron++;
+      });
+      total += asignados.length;
+    });
+    return { fecha, total, asistieron, excusa, faltaron };
+  }
+
+  // Visual estilo think-cell: compara 2 fechas puntuales (la más antigua a la
+  // izquierda, la más reciente a la derecha) con una flecha y una etiqueta de
+  // variación por cada categoría (Asistieron/Excusa/Faltaron). Respeta el
+  // filtro de zona/cargo activos en la parte de arriba de la pestaña.
+  function renderAdhrComparacion(){
+    const wrap = document.getElementById('adhrCmpWrap');
+    if (!wrap) return;
+    const inpA = document.getElementById('adhrCmpFechaA').value.trim();
+    const inpB = document.getElementById('adhrCmpFechaB').value.trim();
+    if (!inpA || !inpB){
+      wrap.innerHTML = '<p class="hint-note">Elige dos fechas (o usa uno de los atajos de arriba) para ver la comparación.</p>';
+      return;
+    }
+    // La fecha más antigua siempre queda a la izquierda, sin importar en qué
+    // campo la haya escrito el admin.
+    const [fechaIzq, fechaDer] = inpA <= inpB ? [inpA, inpB] : [inpB, inpA];
+
+    const fZona = document.getElementById('adhrZona').value;
+    const fCargo = document.getElementById('adhrCargo').value;
+    const zonasAMostrar = fZona === 'ambas' ? ['Poblaciones', 'Metro'] : [fZona];
+
+    const izq = totalesAdhrEnFecha(fechaIzq, zonasAMostrar, fCargo);
+    const der = totalesAdhrEnFecha(fechaDer, zonasAMostrar, fCargo);
+
+    if (!izq || !der){
+      wrap.innerHTML = '<div class="empty-state">Una de las dos fechas elegidas es anterior a tu primera carga de NOMINAS — no hay asignación vigente para graficarla.</div>';
+      return;
+    }
+
+    const categorias = [
+      { key: 'asistieron', label: 'Asistieron (QR)', color: '#7cd68a' },
+      { key: 'excusa', label: 'Excusa (Descanso Efectivo)', color: '#8ab4f8' },
+      { key: 'faltaron', label: 'Faltaron', color: '#e8432f' },
+    ];
+
+    const fmtFecha = (f) => f; // ya viene en AAAA-MM-DD; se deja tal cual para no ambigüar con el admin
+
+    wrap.innerHTML = `
+      <div class="adhr-cmp-grid">
+        ${categorias.map(cat => {
+          const vIzq = izq[cat.key], vDer = der[cat.key];
+          const maxV = Math.max(1, vIzq, vDer);
+          const hPx = (v) => Math.max(Math.round((v / maxV) * 130), v > 0 ? 6 : 2);
+          const delta = vDer - vIzq;
+          const pct = vIzq > 0 ? Math.round((delta / vIzq) * 1000) / 10 : (vDer > 0 ? 100 : 0);
+          const signo = delta > 0 ? '+' : '';
+          const claseDelta = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
+          const flecha = delta > 0 ? '↑' : (delta < 0 ? '↓' : '→');
+          return `
+            <div class="adhr-cmp-panel">
+              <div class="adhr-cmp-title"><span class="adhr-avg-dot" style="background:${cat.color};"></span>${cat.label}</div>
+              <div class="adhr-cmp-bars">
+                <div class="adhr-cmp-bar-col">
+                  <div class="adhr-cmp-bar-val">${vIzq}</div>
+                  <div class="adhr-cmp-bar" style="height:${hPx(vIzq)}px; background:${cat.color}; opacity:0.55;"></div>
+                </div>
+                <div class="adhr-cmp-bar-col">
+                  <div class="adhr-cmp-bar-val">${vDer}</div>
+                  <div class="adhr-cmp-bar" style="height:${hPx(vDer)}px; background:${cat.color};"></div>
+                </div>
+              </div>
+              <div class="adhr-cmp-bar-label" style="display:flex; width:100%; justify-content:space-around; margin-top:2px;">
+                <span>${fmtFecha(fechaIzq)}</span><span>${fmtFecha(fechaDer)}</span>
+              </div>
+              <div class="adhr-cmp-arrow-wrap">
+                <div class="adhr-cmp-delta-pill ${claseDelta}">${flecha} ${signo}${delta} (${signo}${pct}%)</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 
   // ================= Exportar Asistencias / Designados a CSV (para Excel / Power BI) =================

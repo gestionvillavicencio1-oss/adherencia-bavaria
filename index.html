@@ -331,6 +331,7 @@
     background:var(--surface-2); border:1px solid var(--border); color:var(--text-dim);
   }
   .pill.gold{ color:var(--gold); border-color:rgba(232,185,35,0.3); background:rgba(232,185,35,0.08); }
+  .pill.green{ color:#7cd68a; border-color:rgba(124,214,138,0.35); background:rgba(124,214,138,0.1); }
   .pill.red{ color:#f4948a; border-color:rgba(232,67,47,0.3); background:rgba(232,67,47,0.08); }
   .rutina-chip{
     display:inline-block; font-size:11px; padding:3px 9px; border-radius:100px; background:var(--surface-2);
@@ -755,6 +756,8 @@
   .adhr-avg-dot.asistio{background:#7cd68a;} .adhr-avg-dot.excusa{background:#8ab4f8;} .adhr-avg-dot.falto{background:#e8432f;}
   .adhr-avg-num{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
   .adhr-avg-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;}
+  #adhrAvgHoraWrap{ margin:-6px 0 18px; }
+  #adhrAvgHoraWrap .adhr-avg-card{ display:inline-flex; }
   .adhr-detail{ margin-top:20px; background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 18px; }
   .adhr-detail-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
   .adhr-detail-title{ font-size:14px; font-weight:700; }
@@ -1427,6 +1430,7 @@
         <button class="btn-secondary" id="btnAdhrLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Últimos 10 días hábiles</button>
       </div>
       <div class="adhr-avg-summary" id="adhrAvgSummary"></div>
+      <div id="adhrAvgHoraWrap"></div>
       <div id="adhrChartWrap"></div>
       <p class="hint-note" style="margin-top:14px;">Antes de la primera carga de NOMINAS no hay "asignados" que graficar para un día — ese día simplemente no aparece en el gráfico. Los fines de semana tampoco aparecen (las matinales son de lunes a viernes). Haz clic en cualquier segmento de una barra para ver el detalle de personas de ese día/zona/categoría.</p>
       <div class="adhr-detail" id="adhrDetail" style="display:none;"></div>
@@ -3353,6 +3357,30 @@
     return String(valor == null ? '' : valor).replace(/[^0-9]/g, '');
   }
 
+  // Convierte el texto guardado en ATTENDANCE_LOG.time (formato es-CO de
+  // toLocaleTimeString, p.ej. "5:32 a. m." o "5:32 p. m.") a minutos desde
+  // medianoche, para poder promediar horas de marcación. Devuelve null si el
+  // texto no tiene la forma esperada.
+  function parseHoraAMPMaMinutos(texto){
+    if (!texto) return null;
+    const m = String(texto).match(/(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?/i);
+    if (!m) return null;
+    let h = (+m[1]) % 12;
+    if (m[3].toLowerCase() === 'p') h += 12;
+    return h * 60 + (+m[2]);
+  }
+
+  // Formatea minutos desde medianoche de vuelta a "H:MM a. m./p. m." (mismo
+  // estilo que usa toLocaleTimeString('es-CO', ...) en el resto de la app).
+  function formatoHoraAMPM(minutos){
+    const total = Math.round(minutos) % 1440;
+    const h24 = Math.floor(total / 60);
+    const m = total % 60;
+    const ampm = h24 < 12 ? 'a. m.' : 'p. m.';
+    let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+
   function formatoHHMM(minutos){
     const h = Math.floor(minutos / 60) % 24;
     const m = minutos % 60;
@@ -4103,12 +4131,20 @@
         let asistieron = 0, excusa = 0;
         const detalle = [];
         asignados.forEach(p => {
-          const marco = ATTENDANCE_LOG.some(a => a.cd === selectedCD && a.fecha === fecha && a.personId === p.personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
+          const marca = ATTENDANCE_LOG.find(a => a.cd === selectedCD && a.fecha === fecha && a.personId === p.personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
           let estado;
-          if (marco){ asistieron++; estado = 'Asistió'; }
+          if (marca){ asistieron++; estado = 'Asistió'; }
           else if (descansoSet.has(p.personId + '|' + fecha)){ excusa++; estado = 'Excusa (Descanso Efectivo)'; }
           else { estado = 'Faltó'; }
-          detalle.push({ personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado });
+          // horaMarcacion/statusMarcacion solo existen si asistió — vienen del
+          // mismo registro de ATTENDANCE_LOG ('ok' = a tiempo dentro de la
+          // ventana de 15 min configurada en RUTINA_INFO, 'late' = después).
+          detalle.push({
+            personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado,
+            horaMarcacion: marca ? marca.time : null,
+            statusMarcacion: marca ? marca.status : null,
+            minutosMarcacion: marca ? parseHoraAMPMaMinutos(marca.time) : null,
+          });
         });
         const total = asignados.length;
         const faltaron = Math.max(total - asistieron - excusa, 0);
@@ -4197,6 +4233,10 @@
       <div class="adhr-avg-card"><span class="adhr-avg-dot excusa"></span><div><div class="adhr-avg-num">${prom(sExcusa)}</div><div class="adhr-avg-label">Promedio excusa / día</div></div></div>
       <div class="adhr-avg-card"><span class="adhr-avg-dot falto"></span><div><div class="adhr-avg-num">${prom(sFalto)}</div><div class="adhr-avg-label">Promedio faltaron / día</div></div></div>
     `;
+    // Tarjeta dinámica de hora promedio de marcación: se llena y se muestra
+    // solo cuando se hace clic en un segmento "Asistió" (verde) de la barra —
+    // ver mostrarDetalleAdhrSegmento — y se oculta con cualquier otro clic.
+    document.getElementById('adhrAvgHoraWrap').innerHTML = '';
   }
 
   // Top de personas con más inasistencias reiterativas, contado SOLO dentro
@@ -4264,8 +4304,17 @@
   function mostrarDetalleAdhrSegmento(fecha, zona, categoria){
     const detalle = (ADHR_DETALLE_CACHE[fecha + '|' + zona] || []).filter(p => p.estado === categoria);
     const zonaLabel = { Poblaciones: 'Población', Metro: 'Metro' }[zona] || zona;
+    const esAsistio = categoria === 'Asistió';
     const box = document.getElementById('adhrDetail');
     box.style.display = '';
+    // Pill de hora de marcación: verde si marcó dentro de la ventana de 15
+    // min configurada en RUTINA_INFO para esa matinal (status 'ok'), amarillo
+    // si marcó después ('late'). Solo aplica a quienes asistieron.
+    const horaCelda = (p) => {
+      if (!esAsistio || !p.horaMarcacion) return '—';
+      const clase = p.statusMarcacion === 'ok' ? 'green' : 'gold';
+      return `<span class="pill ${clase}">${p.horaMarcacion}</span>`;
+    };
     box.innerHTML = `
       <div class="adhr-detail-head">
         <div>
@@ -4276,20 +4325,44 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th><th>Hora de marcación</th></tr></thead>
           <tbody>
-            ${detalle.length === 0 ? '<tr><td colspan="4" class="empty-state">Nadie en esta categoría.</td></tr>' :
-              detalle.map(p => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td></tr>`).join('')}
+            ${detalle.length === 0 ? '<tr><td colspan="5" class="empty-state">Nadie en esta categoría.</td></tr>' :
+              detalle.map(p => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td><td>${horaCelda(p)}</td></tr>`).join('')}
           </tbody>
         </table>
       </div>
     `;
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     document.getElementById('btnAdhrExportDetalle').addEventListener('click', () => {
-      const headers = ['Cedula', 'Nombre', 'RolAsignado', 'Estado', 'Fecha', 'Zona'];
-      const rows = detalle.map(p => [p.personId, p.nombre, p.cargo, p.estado, fecha, zonaLabel]);
+      const headers = ['Cedula', 'Nombre', 'RolAsignado', 'Estado', 'HoraMarcacion', 'Fecha', 'Zona'];
+      const rows = detalle.map(p => [p.personId, p.nombre, p.cargo, p.estado, p.horaMarcacion || '', fecha, zonaLabel]);
       downloadCsv('detalle_ruta_' + fecha + '_' + zonaLabel + '_' + categoria.replace(/[^a-zA-Z0-9]+/g, '_') + '.csv', toCsv(headers, rows));
     });
+
+    // Tarjeta dinámica de hora promedio de marcación: solo si el segmento
+    // clicado fue "Asistió" (verde) — con cualquier otro (Faltó/Excusa)
+    // desaparece, tal como lo pidió el admin.
+    const horaWrap = document.getElementById('adhrAvgHoraWrap');
+    if (esAsistio){
+      const minutosValidos = detalle.map(p => p.minutosMarcacion).filter(m => m !== null && m !== undefined);
+      if (minutosValidos.length){
+        const promedioMin = minutosValidos.reduce((a, b) => a + b, 0) / minutosValidos.length;
+        horaWrap.innerHTML = `
+          <div class="adhr-avg-card">
+            <span class="adhr-avg-dot" style="background:#7cd68a;"></span>
+            <div>
+              <div class="adhr-avg-num">${formatoHoraAMPM(promedioMin)}</div>
+              <div class="adhr-avg-label">Hora promedio de marcación — ${zonaLabel} · ${fecha}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        horaWrap.innerHTML = '';
+      }
+    } else {
+      horaWrap.innerHTML = '';
+    }
   }
 
   // Totales Asistieron/Excusa/Faltaron para UNA fecha puntual, respetando el
@@ -4361,7 +4434,12 @@
           const delta = vDer - vIzq;
           const pct = vIzq > 0 ? Math.round((delta / vIzq) * 1000) / 10 : (vDer > 0 ? 100 : 0);
           const signo = delta > 0 ? '+' : '';
-          const claseDelta = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
+          // Para "Faltaron", que baje es bueno (verde) y que suba es malo (rojo)
+          // — al revés que Asistieron/Excusa, donde subir es lo positivo.
+          const esBuenoSiSube = cat.key !== 'faltaron';
+          const esMejora = esBuenoSiSube ? delta > 0 : delta < 0;
+          const esPeora = esBuenoSiSube ? delta < 0 : delta > 0;
+          const claseDelta = esMejora ? 'up' : (esPeora ? 'down' : 'flat');
           const flecha = delta > 0 ? '↑' : (delta < 0 ? '↓' : '→');
           return `
             <div class="adhr-cmp-panel">

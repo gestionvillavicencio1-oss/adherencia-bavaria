@@ -1294,6 +1294,10 @@
           <input type="date" id="adhFechaHasta" style="width:120px;">
         </label>
         <button class="btn-secondary" id="btnAdhLimpiarFechas" style="flex:none; padding:8px 14px; font-size:12px;">Limpiar fechas</button>
+        <button class="btn-add" id="btnExportDashboardUC" title="Excel con resumen, adherencia por persona, por día y detalle — respeta el rango de fechas de arriba">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Dashboard UC (.xlsx)
+        </button>
       </div>
       <div class="adh-summary" id="adhSummary"></div>
       <div id="adhBars"></div>
@@ -1702,6 +1706,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
 <!-- SheetJS: lee el Excel de "Descanso Efectivo" directo en el navegador (nada se sube a ningún servidor externo). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <!-- ===================================================================
      FIREBASE SDK (modular, vía CDN) — Firestore como base de datos real.
      Todo el código de la app vive en este único bloque de script de tipo
@@ -4708,6 +4713,176 @@
       alert('No se pudo guardar el archivo. Intenta de nuevo.');
     }
   }
+
+  // ================= Dashboard UC en Excel (para compartir) =================
+  // Genera en el navegador (ExcelJS) un .xlsx con 4 hojas: Resumen (adherencia
+  // por rutina), Por persona (con semáforo de color), Por día y Detalle (una
+  // fila por persona-sesión, lista para tabla dinámica). Usa el mismo criterio
+  // que la pestaña Adherencia: UNIÓN de designados y asistencias, y respeta el
+  // rango Desde/Hasta de esa pestaña. Los porcentajes son fórmulas de Excel.
+  async function descargarDashboardUC(){
+    if (typeof ExcelJS === 'undefined'){ alert('No se pudo cargar el generador de Excel (sin conexión al CDN).'); return; }
+    const fDesde = document.getElementById('adhFechaDesde').value.trim();
+    const fHasta = document.getElementById('adhFechaHasta').value.trim();
+    const RUT = RUTINAS_UC_CONTABLES;
+
+    const desig = DESIGNATION_LOG.filter(d => d.cd === selectedCD && d.grupo === 'UC' && RUT.includes(d.rutina) && fechaEnRango(d.fecha, fDesde, fHasta));
+    const asis = ATTENDANCE_LOG.filter(a => a.cd === selectedCD && a.grupo === 'UC' && RUT.includes(a.rutina) && fechaEnRango(a.fecha, fDesde, fHasta));
+    const asisPorKey = new Map(asis.map(a => [a.personId + '|' + a.rutina + '|' + a.fecha, a]));
+    const sesiones = new Map();
+    desig.forEach(d => {
+      const k = d.personId + '|' + d.rutina + '|' + d.fecha;
+      sesiones.set(k, { personId: d.personId, nombre: d.nombre, cargo: d.cargo || '', rutina: d.rutina, fecha: d.fecha });
+    });
+    asis.forEach(a => {
+      const k = a.personId + '|' + a.rutina + '|' + a.fecha;
+      if (!sesiones.has(k)) sesiones.set(k, { personId: a.personId, nombre: a.nombre, cargo: a.cargo || '', rutina: a.rutina, fecha: a.fecha });
+    });
+    const filas = [...sesiones.entries()].map(([k, v]) => {
+      const a = asisPorKey.get(k);
+      return { ...v, asistio: !!a, hora: a ? a.time : '', puntualidad: a ? (a.status === 'ok' ? 'A tiempo' : 'Tarde') : '' };
+    });
+    if (!filas.length){ alert('No hay datos de UC en este rango de fechas para exportar.'); return; }
+
+    // ---- estilos comunes ----
+    const GOLD = 'FFE8B923', DARK = 'FF2A1D14', LIGHT = 'FFF6EFE6';
+    const hdr = (row) => row.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DARK } };
+      c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    });
+    const semaforo = (ws, ref) => ws.addConditionalFormatting({ ref, rules: [{
+      type: 'colorScale', cfvo: [{ type: 'num', value: 0 }, { type: 'num', value: 0.5 }, { type: 'num', value: 1 }],
+      color: [{ argb: 'FFE8432F' }, { argb: 'FFF3D36B' }, { argb: 'FF7CD68A' }],
+    }] });
+    const colL = (n) => { let s = ''; while (n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+    const pctRes = (num, den) => den ? num / den : 0;
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Adherencia Rutinas'; wb.created = new Date();
+
+    // ---- agregados ----
+    const porPersona = new Map();
+    filas.forEach(f => {
+      let p = porPersona.get(f.personId);
+      if (!p) { p = { personId: f.personId, nombre: f.nombre, cargo: f.cargo, r: {} }; RUT.forEach(r => p.r[r] = { ses: 0, asis: 0 }); porPersona.set(f.personId, p); }
+      p.r[f.rutina].ses++; if (f.asistio) p.r[f.rutina].asis++;
+    });
+    const personas = [...porPersona.values()].map(p => {
+      const ts = RUT.reduce((a, r) => a + p.r[r].ses, 0), ta = RUT.reduce((a, r) => a + p.r[r].asis, 0);
+      return { ...p, ts, ta, pct: pctRes(ta, ts) };
+    }).sort((a, b) => a.pct - b.pct || a.nombre.localeCompare(b.nombre)); // peor adherencia primero
+    const totRut = RUT.map(r => ({ rutina: r, ses: filas.filter(f => f.rutina === r).length, asis: filas.filter(f => f.rutina === r && f.asistio).length }));
+
+    // ================= Hoja 1: Resumen =================
+    const ws1 = wb.addWorksheet('Resumen', { views: [{ showGridLines: false }] });
+    ws1.columns = [{ width: 30 }, { width: 20 }, { width: 16 }, { width: 16 }, { width: 4 }, { width: 100 }];
+    ws1.mergeCells('A1:D1');
+    ws1.getCell('A1').value = 'Dashboard de adherencia — UC';
+    ws1.getCell('A1').font = { size: 18, bold: true, color: { argb: DARK } };
+    ws1.mergeCells('A2:D2');
+    ws1.getCell('A2').value = `${selectedCD} · ${fDesde || 'inicio'} a ${fHasta || 'hoy'} · generado ${new Date().toISOString().slice(0, 10)}`;
+    ws1.getCell('A2').font = { color: { argb: 'FF7A6A5B' } };
+    const h1 = ws1.getRow(4); h1.values = ['Rutina', 'Sesiones designadas', 'Asistieron', 'Adherencia %']; hdr(h1);
+    totRut.forEach((t, i) => {
+      const r = 5 + i;
+      ws1.getRow(r).values = [t.rutina, t.ses, t.asis, { formula: `IFERROR(C${r}/B${r},0)`, result: pctRes(t.asis, t.ses) }];
+    });
+    const rt = 5 + totRut.length;
+    const sumSes = totRut.reduce((a, t) => a + t.ses, 0), sumAsis = totRut.reduce((a, t) => a + t.asis, 0);
+    ws1.getRow(rt).values = ['Total UC', { formula: `SUM(B5:B${rt - 1})`, result: sumSes }, { formula: `SUM(C5:C${rt - 1})`, result: sumAsis }, { formula: `IFERROR(C${rt}/B${rt},0)`, result: pctRes(sumAsis, sumSes) }];
+    ws1.getRow(rt).font = { bold: true };
+    ws1.getRow(rt).eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT } }; });
+    for (let r = 5; r <= rt; r++){ ws1.getCell(`D${r}`).numFmt = '0%'; ['B', 'C', 'D'].forEach(c => ws1.getCell(`${c}${r}`).alignment = { horizontal: 'center' }); }
+    semaforo(ws1, `D5:D${rt}`);
+    const nPers = personas.length;
+    const riesgo = personas.filter(p => p.pct < 0.5).length;
+    ws1.getCell(`A${rt + 2}`).value = 'Personas UC con adherencia < 50%';
+    ws1.getCell(`B${rt + 2}`).value = { formula: `COUNTIF('Por persona'!L2:L${nPers + 1},"<0.5")`, result: riesgo };
+    ws1.getCell(`A${rt + 3}`).value = 'Personas UC en el rango';
+    ws1.getCell(`B${rt + 3}`).value = { formula: `COUNTA('Por persona'!A2:A${nPers + 1})`, result: nPers };
+    [rt + 2, rt + 3].forEach(r => { ws1.getCell(`A${r}`).font = { bold: true }; ws1.getCell(`B${r}`).alignment = { horizontal: 'center' }; });
+    const notas = [
+      'CÓMO USAR ESTE ARCHIVO',
+      '• Por persona: ordenada de menor a mayor adherencia; usa los filtros de la fila de encabezado.',
+      '• Por día: adherencia diaria de cada rutina.',
+      '• Detalle: una fila por persona y sesión (Asistió Sí/No) — insértale una tabla dinámica para cruzar lo que quieras.',
+      '• Los % son fórmulas: si corriges un dato, se recalculan solos.',
+      'Adherencia = sesiones a las que asistió ÷ sesiones en las que estaba designado (o que marcó).',
+    ];
+    notas.forEach((t, i) => { const c = ws1.getCell(`F${4 + i}`); c.value = t; if (i === 0) c.font = { bold: true, color: { argb: DARK } }; });
+
+    // ================= Hoja 2: Por persona =================
+    const ws2 = wb.addWorksheet('Por persona', { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
+    const heads2 = ['Cédula', 'Nombre', 'Cargo'];
+    RUT.forEach(r => heads2.push(`${r} · Sesiones`, `${r} · Asistió`, `${r} · %`));
+    heads2.push('Total sesiones', 'Total asistió', '% Total');
+    ws2.getRow(1).values = heads2; hdr(ws2.getRow(1)); ws2.getRow(1).height = 34;
+    ws2.columns = heads2.map((h, i) => ({ width: i === 1 ? 34 : i === 2 ? 26 : i < 3 ? 14 : 13 }));
+    personas.forEach((p, i) => {
+      const r = i + 2;
+      const vals = [p.personId, p.nombre, p.cargo];
+      RUT.forEach((rt2, j) => {
+        const c0 = 4 + j * 3;
+        vals.push(p.r[rt2].ses, p.r[rt2].asis, { formula: `IFERROR(${colL(c0 + 1)}${r}/${colL(c0)}${r},0)`, result: pctRes(p.r[rt2].asis, p.r[rt2].ses) });
+      });
+      const sesC = RUT.map((_, j) => `${colL(4 + j * 3)}${r}`).join('+');
+      const asisC = RUT.map((_, j) => `${colL(5 + j * 3)}${r}`).join('+');
+      vals.push({ formula: sesC, result: p.ts }, { formula: asisC, result: p.ta }, { formula: `IFERROR(K${r}/J${r},0)`, result: p.pct });
+      ws2.getRow(r).values = vals;
+    });
+    const lastP = personas.length + 1;
+    RUT.forEach((_, j) => { const c = colL(6 + j * 3); for (let r = 2; r <= lastP; r++) ws2.getCell(`${c}${r}`).numFmt = '0%'; semaforo(ws2, `${c}2:${c}${lastP}`); });
+    for (let r = 2; r <= lastP; r++) ws2.getCell(`L${r}`).numFmt = '0%';
+    semaforo(ws2, `L2:L${lastP}`);
+    ws2.autoFilter = { from: 'A1', to: `L${lastP}` };
+
+    // ================= Hoja 3: Por día =================
+    const ws3 = wb.addWorksheet('Por día', { views: [{ state: 'frozen', ySplit: 1 }] });
+    const heads3 = ['Fecha'];
+    RUT.forEach(r => heads3.push(`${r} · Designados`, `${r} · Asistieron`, `${r} · %`));
+    ws3.getRow(1).values = heads3; hdr(ws3.getRow(1)); ws3.getRow(1).height = 34;
+    ws3.columns = heads3.map((h, i) => ({ width: i === 0 ? 13 : 14 }));
+    const fechas = [...new Set(filas.map(f => f.fecha))].sort();
+    fechas.forEach((fe, i) => {
+      const r = i + 2;
+      const vals = [fe];
+      RUT.forEach((rt3, j) => {
+        const ses = filas.filter(f => f.fecha === fe && f.rutina === rt3).length;
+        const as = filas.filter(f => f.fecha === fe && f.rutina === rt3 && f.asistio).length;
+        const c0 = 2 + j * 3;
+        vals.push(ses, as, ses ? { formula: `IFERROR(${colL(c0 + 1)}${r}/${colL(c0)}${r},0)`, result: pctRes(as, ses) } : '');
+      });
+      ws3.getRow(r).values = vals;
+    });
+    RUT.forEach((_, j) => { const c = colL(4 + j * 3); for (let r = 2; r <= fechas.length + 1; r++) ws3.getCell(`${c}${r}`).numFmt = '0%'; semaforo(ws3, `${c}2:${c}${fechas.length + 1}`); });
+    ws3.autoFilter = { from: 'A1', to: `${colL(heads3.length)}${fechas.length + 1}` };
+
+    // ================= Hoja 4: Detalle =================
+    const ws4 = wb.addWorksheet('Detalle', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws4.getRow(1).values = ['Fecha', 'Rutina', 'Cédula', 'Nombre', 'Cargo', 'Asistió', 'Hora', 'Puntualidad']; hdr(ws4.getRow(1));
+    ws4.columns = [{ width: 12 }, { width: 22 }, { width: 14 }, { width: 34 }, { width: 26 }, { width: 10 }, { width: 12 }, { width: 14 }];
+    filas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.rutina.localeCompare(b.rutina) || a.nombre.localeCompare(b.nombre))
+      .forEach((f, i) => { ws4.getRow(i + 2).values = [f.fecha, f.rutina, f.personId, f.nombre, f.cargo, f.asistio ? 'Sí' : 'No', f.hora, f.puntualidad]; });
+    ws4.autoFilter = { from: 'A1', to: `H${filas.length + 1}` };
+    ws4.addConditionalFormatting({ ref: `F2:F${filas.length + 1}`, rules: [
+      { type: 'cellIs', operator: 'equal', formulae: ['"No"'], style: { font: { color: { argb: 'FFB3261E' }, bold: true } } },
+    ] });
+
+    try {
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `dashboard_UC_${selectedCD}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error('No se pudo generar el Excel:', err);
+      alert('No se pudo generar el archivo. Intenta de nuevo.');
+    }
+  }
+  document.getElementById('btnExportDashboardUC').addEventListener('click', descargarDashboardUC);
 
   document.getElementById('btnExportAsistencias').addEventListener('click', () => {
     const headers = ['Rutina', 'Fecha', 'CD', 'Cedula', 'Nombre', 'Cargo', 'Grupo', 'Estado', 'Hora'];

@@ -452,6 +452,9 @@
   }
   .session-info h3{font-family:'Fraunces',Georgia,serif; font-size:19px; margin:0 0 4px;}
   .session-info p{font-size:13px; color:var(--text-dim); margin:0;}
+  .extra-rutinas{ margin-top:12px; }
+  .extra-rutinas-label{ display:block; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px; }
+  .extra-rutinas-checks{ display:flex; flex-wrap:wrap; gap:8px; }
   .session-clock{
     font-family:'Fraunces',Georgia,serif; font-size:30px; font-weight:600; color:var(--gold);
     font-variant-numeric:tabular-nums;
@@ -1309,10 +1312,28 @@
         </div>
       </div>
       <p class="hint-note">Cada fila queda guardada apenas un líder marca "A tiempo" o "Tarde" en su rutina, de forma independiente a la base de colaboradores. Si alguien es eliminado de "Colaboradores" (por ejemplo por retiro), su historial de asistencia pasado se conserva aquí igual, marcado como "Retirado". El rango de fechas de arriba también filtra esta tabla. Las dos exportaciones comparten las columnas Rutina, Fecha, CD y Cédula, para que en Excel/Power BI puedas relacionarlas y comparar designados vs. asistentes por sesión.</p>
+      <div class="descanso-card" style="margin-bottom:16px;">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Corregir asistencia: copiar una rutina en otra</div>
+            <div class="descanso-card-sub">Si una rutina de un día (p. ej. Entrenamiento UC) debía contar también como Matinal Población o Metro, cópiala aquí: se registra a todos los que asistieron en la rutina origen sin pisar a quienes ya estén en el destino. Para casos individuales usa "Contar en otra" en cada fila.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha
+            <input type="date" id="replicarFecha" style="width:130px;">
+          </label>
+          <select id="replicarOrigen"></select>
+          <span style="font-size:12px; color:var(--text-faint);">→</span>
+          <select id="replicarDestino"></select>
+          <button class="btn-secondary" id="btnReplicarRutina" style="flex:none; padding:8px 14px; font-size:12px;">Copiar</button>
+          <span id="replicarMsg" style="font-size:12px; color:var(--text-faint);"></span>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Colaborador</th><th>Cédula</th><th>Rutina</th><th>Fecha</th><th>Hora</th><th>Estado</th><th></th></tr>
+            <tr><th>Colaborador</th><th>Cédula</th><th>Rutina</th><th>Fecha</th><th>Hora</th><th>Estado</th><th></th><th>Editar</th></tr>
           </thead>
           <tbody id="adhLogBody"></tbody>
         </table>
@@ -1539,6 +1560,10 @@
       <div class="session-info">
         <h3 id="sessionTitle">Matinal Poblaciones</h3>
         <p id="sessionMeta">Horario: 5:30 a. m. a 6:00 a. m. · Ventana de llegada a tiempo: 15 min</p>
+        <div class="extra-rutinas" id="extraRutinasBox" hidden>
+          <span class="extra-rutinas-label">Que cada escaneo cuente también como:</span>
+          <div class="extra-rutinas-checks" id="extraRutinasChecks"></div>
+        </div>
       </div>
       <div class="session-clock" id="liveClock">--:--:--</div>
       <div class="session-stats">
@@ -3268,6 +3293,7 @@
   function renderAttendanceLog(fDesde, fHasta, fTurno){
     const tbody = document.getElementById('adhLogBody');
     if (!tbody) return;
+    setupReplicarRutinaUI();
     fDesde = fDesde || '';
     fHasta = fHasta || '';
     fTurno = fTurno || '';
@@ -3275,11 +3301,12 @@
       .filter(r => r.cd === selectedCD && fechaEnRango(r.fecha, fDesde, fHasta) && (!fTurno || r.turno === fTurno))
       .sort((a, b) => (b.fecha + b.time).localeCompare(a.fecha + a.time));
     if (log.length === 0){
-      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">Aún no se ha marcado ninguna asistencia en este CD para este rango de fechas.</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Aún no se ha marcado ninguna asistencia en este CD para este rango de fechas.</div></td></tr>';
       return;
     }
-    tbody.innerHTML = log.map(r => {
+    tbody.innerHTML = log.map((r, i) => {
       const sigueActivo = PEOPLE.some(p => p.id === r.personId);
+      const puedeContarOtra = RUTINAS_UC_CONTABLES.includes(r.rutina);
       return `
         <tr>
           <td><div class="cell-name"><div class="cell-av">${initials(r.nombre)}</div><div><b>${r.nombre}</b></div></div></td>
@@ -3289,9 +3316,131 @@
           <td>${r.time}</td>
           <td><span class="pill ${r.status === 'ok' ? '' : 'gold'}">${r.status === 'ok' ? 'A tiempo' : 'Tarde'}</span></td>
           <td>${sigueActivo ? '' : '<span class="pill red">Retirado</span>'}</td>
+          <td>${puedeContarOtra ? `<button class="btn-secondary" data-edit-asist="${i}" style="flex:none; padding:5px 10px; font-size:11.5px;">Contar en otra</button>` : ''}</td>
         </tr>
       `;
     }).join('');
+    tbody.querySelectorAll('[data-edit-asist]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = log[+btn.dataset.editAsist];
+        abrirModalAsistenciaManual({
+          personId: r.personId, nombre: r.nombre, cargo: r.cargo, grupo: r.grupo,
+          fecha: r.fecha, time: r.time, rutinaOrigen: r.rutina,
+        });
+      });
+    });
+  }
+
+  // ================= Edición manual de asistencia (admin) =================
+  // Permite registrar a una persona en OTRA rutina (p.ej. una sesión de
+  // Entrenamiento UC que debía contar también como Matinal Población/Metro),
+  // o dar por asistida a quien no escaneó. Escribe el mismo documento que un
+  // escaneo normal (id ${cd}_${rutina}_${fecha}_${personId}), marcado con
+  // editadoManual para poder distinguirlo luego.
+  async function guardarAsistenciaManual(datos, rutina, fecha, time){
+    const cd = selectedCD;
+    const min = parseHoraAMPMaMinutos(time);
+    const info = RUTINA_INFO[rutina] || {};
+    const status = (min !== null && typeof info.inicioMin === 'number')
+      ? (min <= info.inicioMin + (info.ventana || 15) ? 'ok' : 'late') : 'ok';
+    const zonaRutina = RUTINA_A_ZONA[rutina] || null;
+    let zonaAsignada = null, zonaCruzada = false;
+    if (zonaRutina){
+      zonaAsignada = mapaZonaAsignadaEnFecha(cd, fecha).get(datos.personId) || null;
+      zonaCruzada = !!zonaAsignada && zonaAsignada !== zonaRutina;
+    }
+    await setDoc(doc(colAsistencias, `${cd}_${rutina}_${fecha}_${datos.personId}`), {
+      personId: datos.personId, nombre: datos.nombre, cargo: datos.cargo || '', grupo: datos.grupo || '',
+      cd, rutina, status, time, fecha, turno: null, zonaAsignada, zonaCruzada,
+      editadoManual: true,
+    });
+  }
+
+  function abrirModalAsistenciaManual(datos){
+    const previo = document.getElementById('modalAsistManual');
+    if (previo) previo.remove();
+    const min = parseHoraAMPMaMinutos(datos.time);
+    const horaInput = min !== null ? formatoHHMM(min) : '05:30';
+    const opciones = RUTINAS_UC_CONTABLES.filter(r => r !== datos.rutinaOrigen);
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.id = 'modalAsistManual';
+    ov.innerHTML = `
+      <div class="modal-box">
+        <h3 class="modal-title">Registrar en otra rutina</h3>
+        <p style="font-size:13px; color:var(--text-dim); margin:0 0 16px;"><b>${datos.nombre}</b> (${datos.personId}) · ${datos.fecha}${datos.rutinaOrigen ? ` · hoy figura en <b>${datos.rutinaOrigen}</b>` : ''}</p>
+        <div class="modal-field">
+          <label>Contar también en</label>
+          <div class="checkbox-grid">
+            ${opciones.map(r => `<label class="check-chip"><input type="checkbox" value="${r}">${r}</label>`).join('')}
+          </div>
+        </div>
+        <div class="modal-field">
+          <label>Hora de marcación</label>
+          <input type="time" id="asistManualHora" value="${horaInput}" style="width:100%; background:var(--surface-2); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); font-family:inherit; color-scheme:dark;">
+        </div>
+        <p id="asistManualMsg" style="font-size:12px; color:var(--text-faint); min-height:16px; margin:0;"></p>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="asistManualCancel">Cancelar</button>
+          <button class="btn-primary" id="asistManualOk">Guardar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelectorAll('.check-chip input').forEach(cb => cb.addEventListener('change', () => cb.parentElement.classList.toggle('checked', cb.checked)));
+    document.getElementById('asistManualCancel').onclick = () => ov.remove();
+    document.getElementById('asistManualOk').onclick = async () => {
+      const elegidas = [...ov.querySelectorAll('.check-chip input:checked')].map(c => c.value);
+      const msg = document.getElementById('asistManualMsg');
+      const hhmm = document.getElementById('asistManualHora').value;
+      if (!elegidas.length){ msg.textContent = 'Elige al menos una rutina.'; return; }
+      if (!hhmm){ msg.textContent = 'Indica la hora de marcación.'; return; }
+      const [h, m] = hhmm.split(':').map(Number);
+      const time = formatoHoraAMPM(h * 60 + m);
+      msg.textContent = 'Guardando…';
+      try {
+        for (const r of elegidas) await guardarAsistenciaManual(datos, r, datos.fecha, time);
+        ov.remove();
+      } catch (e) {
+        console.error('No se pudo guardar la asistencia manual:', e);
+        msg.textContent = 'No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.';
+      }
+    };
+  }
+
+  // Herramienta masiva: copia TODAS las asistencias de una rutina en una fecha
+  // hacia otra rutina (p.ej. Entrenamiento UC del 30/09 → Matinal Población),
+  // sin pisar las que ya existan en la rutina destino.
+  async function replicarRutinaEnFecha(fecha, origen, destino){
+    const cd = selectedCD;
+    const yaEnDestino = new Set(ATTENDANCE_LOG.filter(a => a.cd === cd && a.fecha === fecha && a.rutina === destino).map(a => a.personId));
+    const fuentes = ATTENDANCE_LOG.filter(a => a.cd === cd && a.fecha === fecha && a.rutina === origen && !yaEnDestino.has(a.personId));
+    for (const a of fuentes) await guardarAsistenciaManual(a, destino, fecha, a.time);
+    return fuentes.length;
+  }
+
+  function setupReplicarRutinaUI(){
+    const btn = document.getElementById('btnReplicarRutina');
+    if (!btn || btn.dataset.ready) return;
+    btn.dataset.ready = '1';
+    const selO = document.getElementById('replicarOrigen');
+    const selD = document.getElementById('replicarDestino');
+    const opts = RUTINAS_UC_CONTABLES.map(r => `<option value="${r}">${r}</option>`).join('');
+    selO.innerHTML = opts; selD.innerHTML = opts;
+    selO.value = 'Entrenamiento UC'; selD.value = 'Matinal Poblaciones';
+    btn.addEventListener('click', async () => {
+      const fecha = document.getElementById('replicarFecha').value;
+      const msg = document.getElementById('replicarMsg');
+      if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
+      if (selO.value === selD.value){ msg.textContent = 'Origen y destino deben ser distintos.'; return; }
+      msg.textContent = 'Copiando…';
+      try {
+        const n = await replicarRutinaEnFecha(fecha, selO.value, selD.value);
+        msg.textContent = n ? `Listo: ${n} persona${n === 1 ? '' : 's'} registrada${n === 1 ? '' : 's'} en ${selD.value}.` : 'No había asistencias nuevas por copiar (origen vacío o ya estaban en el destino).';
+      } catch (e) {
+        console.error(e);
+        msg.textContent = 'No se pudo copiar. Revisa tu conexión e inténtalo de nuevo.';
+      }
+    });
   }
 
   // ================= Adherencia por persona (racha de días sin asistir a NINGUNA rutina) =================
@@ -4388,14 +4537,24 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th><th>Hora de marcación</th></tr></thead>
+          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th><th>Hora de marcación</th><th></th></tr></thead>
           <tbody>
-            ${detalle.length === 0 ? '<tr><td colspan="5" class="empty-state">Nadie en esta categoría.</td></tr>' :
-              detalle.map(p => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td><td>${horaCelda(p)}</td></tr>`).join('')}
+            ${detalle.length === 0 ? '<tr><td colspan="6" class="empty-state">Nadie en esta categoría.</td></tr>' :
+              detalle.map((p, i) => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td><td>${horaCelda(p)}</td><td>${esAsistio ? '' : `<button class="btn-secondary" data-reg-asist="${i}" style="flex:none; padding:5px 10px; font-size:11.5px;">Registrar asistencia</button>`}</td></tr>`).join('')}
           </tbody>
         </table>
       </div>
     `;
+    box.querySelectorAll('[data-reg-asist]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = detalle[+btn.dataset.regAsist];
+        const persona = PEOPLE.find(x => x.id === p.personId) || {};
+        abrirModalAsistenciaManual({
+          personId: p.personId, nombre: p.nombre, cargo: persona.cargo || p.cargo, grupo: persona.grupo || '',
+          fecha, time: null, rutinaOrigen: null,
+        });
+      });
+    });
     // No hacemos scroll automático: el detalle se llena debajo pero la
     // pantalla se queda donde estaba (en el gráfico), tal como lo pidió el
     // admin — antes bajaba solo al hacer clic.
@@ -4879,10 +5038,53 @@
     return personsForLeaderRutina(rutina, cd);
   }
 
+  // Rutinas de UC que pueden "contar por ambas": el líder abre una (p.ej.
+  // Entrenamiento UC) y marca que cada escaneo también quede registrado como
+  // Matinal Poblaciones y/o Matinal Metro (o al revés). Cada escaneo escribe un
+  // documento de asistencia por rutina marcada, con la hora/estado de ESA rutina.
+  const RUTINAS_UC_CONTABLES = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC'];
+
+  function renderExtraRutinasChecks(rutina){
+    const box = document.getElementById('extraRutinasBox');
+    const cont = document.getElementById('extraRutinasChecks');
+    if (!box || !cont) return;
+    if (!RUTINAS_UC_CONTABLES.includes(rutina)){ box.hidden = true; cont.innerHTML = ''; return; }
+    box.hidden = false;
+    cont.innerHTML = '';
+    RUTINAS_UC_CONTABLES.filter(r => r !== rutina).forEach(r => {
+      const label = document.createElement('label');
+      label.className = 'check-chip';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.addEventListener('change', () => {
+        label.classList.toggle('checked', cb.checked);
+        if (cb.checked){
+          if (!leaderState.extras.includes(r)) leaderState.extras.push(r);
+          // Lo ya escaneado en esta sesión también pasa a la rutina recién marcada.
+          Object.entries(leaderState.marks).forEach(([personId, m]) => {
+            const persona = PEOPLE.find(p => p.id === personId);
+            if (persona) registrarMarcaExtra(persona, r, m.time);
+          });
+        } else {
+          leaderState.extras = leaderState.extras.filter(x => x !== r);
+        }
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(r));
+      cont.appendChild(label);
+    });
+  }
+
+  function registrarMarcaExtra(persona, rutinaExtra, time){
+    logAttendance(persona, rutinaExtra, currentUser.cd, calcularStatusPorHora(rutinaExtra), time, null);
+  }
+
   function selectLeaderRutina(rutina, user, turnoElegido){
     if (typeof cerrarEscanerQr === 'function') cerrarEscanerQr(); // evita escanear para la rutina anterior
     leaderState.rutina = rutina;
     leaderState.marks = {};
+    leaderState.extras = [];
+    renderExtraRutinasChecks(rutina);
     // Los turnos rotativos A/B/C solo aplican a "Cambio de turno". El turno ya no se
     // calcula por defecto aquí: viene de la elección explícita hecha en el wizard
     // poka-yoke (pykConfirmar), que es obligatoria antes de poder escanear.
@@ -5289,6 +5491,7 @@
     const time = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
     leaderState.marks[persona.id] = { status, time };
     logAttendance(persona, leaderState.rutina, currentUser.cd, status, time, leaderState.turno);
+    (leaderState.extras || []).forEach(r => registrarMarcaExtra(persona, r, time));
     updateLeaderStats(currentUser.cd);
     mostrarChulitoEscaneo();
 

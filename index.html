@@ -1298,6 +1298,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Dashboard UC (.xlsx)
         </button>
+        <button class="btn-add" id="btnExportBaseGlobal" title="Excel con TODAS las rutinas y grupos: quién asistió y quién no, con su cargo, por fecha — respeta el rango de fechas de arriba">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Base global (.xlsx)
+        </button>
       </div>
       <div class="adh-summary" id="adhSummary"></div>
       <div id="adhBars"></div>
@@ -4315,6 +4319,7 @@
             : (marca ? marca.status : null);
           detalle.push({
             personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado,
+            cargoReal: ((PEOPLE.find(x => x.id === p.personId) || {}).cargo || '').trim(),
             horaMarcacion: marca ? marca.time : null,
             statusMarcacion,
             minutosMarcacion,
@@ -4459,38 +4464,61 @@
   // Top de personas con más inasistencias reiterativas, contado SOLO dentro
   // del rango de fechas actualmente visible en el gráfico (cambia con los
   // filtros Desde/Hasta) — así lo pidió el admin explícitamente.
+  // Cargos (de la base de colaboradores) que el admin excluye del top porque
+  // no tienen que asistir a las reuniones (p. ej. conductor de Kangoo). Se
+  // guarda en este navegador; es solo un filtro de visualización del top.
+  function cargosExcluidosTop(){
+    try { return new Set(JSON.parse(localStorage.getItem('adhrTopCargosExcluidos') || '[]')); } catch (e) { return new Set(); }
+  }
+  function guardarCargosExcluidosTop(set){
+    try { localStorage.setItem('adhrTopCargosExcluidos', JSON.stringify([...set])); } catch (e) { /* sin almacenamiento: el filtro vale solo mientras la página siga abierta */ }
+  }
+  let ADHR_TOP_EXCLUIDOS_MEM = null; // respaldo en memoria si localStorage no está disponible
+
   function renderAdhrTopAusencias(datosPorDia, zonasAMostrar){
-    const conteo = new Map(); // personId -> {nombre, fechas:[]}
+    const conteo = new Map(); // personId -> {nombre, cargoReal, rol, fechas:[]}
     datosPorDia.forEach(d => zonasAMostrar.forEach(zona => {
       const detalle = ADHR_DETALLE_CACHE[d.fecha + '|' + zona] || [];
       detalle.forEach(p => {
         if (p.estado !== 'Faltó') return;
-        const actual = conteo.get(p.personId) || { nombre: p.nombre, fechas: [] };
+        const actual = conteo.get(p.personId) || { nombre: p.nombre, cargoReal: p.cargoReal || '', rol: p.cargo || '', fechas: [] };
         actual.fechas.push(d.fecha);
         conteo.set(p.personId, actual);
       });
     }));
-    const top = [...conteo.entries()]
-      .map(([personId, v]) => ({ personId, nombre: v.nombre, fechas: [...new Set(v.fechas)].sort(), faltas: new Set(v.fechas).size }))
-      .filter(p => p.faltas > 0)
+    const todos = [...conteo.entries()]
+      .map(([personId, v]) => ({ personId, nombre: v.nombre, cargoReal: v.cargoReal || 'Sin cargo en la base', rol: v.rol, fechas: [...new Set(v.fechas)].sort(), faltas: new Set(v.fechas).size }))
+      .filter(p => p.faltas > 0);
+    const cargosPresentes = [...new Set(todos.map(p => p.cargoReal))].sort((a, b) => a.localeCompare(b));
+    const excluidos = ADHR_TOP_EXCLUIDOS_MEM || cargosExcluidosTop();
+    const top = todos
+      .filter(p => !excluidos.has(p.cargoReal))
       .sort((a, b) => b.faltas - a.faltas || a.nombre.localeCompare(b.nombre))
       .slice(0, 20);
 
     const box = document.getElementById('adhrTopWrap');
-    if (top.length === 0){
+    if (todos.length === 0){
       box.innerHTML = '<p class="hint-note">Nadie tiene faltas registradas en el rango de fechas visible.</p>';
       return;
     }
+    const nExcl = todos.filter(p => excluidos.has(p.cargoReal)).length;
     box.innerHTML = `
       <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title" style="font-size:15px;">Top de inasistencias reiterativas (rango visible)</div>
         <button class="btn-secondary" id="btnAdhrExportTop" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
       </div>
+      <div class="extra-rutinas" style="margin:0 0 12px;">
+        <span class="extra-rutinas-label">Cargos que no tienen que asistir (marca para excluirlos del top)${nExcl ? ` · ${nExcl} persona${nExcl === 1 ? '' : 's'} excluida${nExcl === 1 ? '' : 's'}` : ''}</span>
+        <div class="extra-rutinas-checks" id="adhrTopCargos">
+          ${cargosPresentes.map((c, k) => `<label class="check-chip ${excluidos.has(c) ? 'checked' : ''}"><input type="checkbox" data-cargo-idx="${k}" ${excluidos.has(c) ? 'checked' : ''}>${c} (${todos.filter(p => p.cargoReal === c).length})</label>`).join('')}
+        </div>
+      </div>
+      ${top.length === 0 ? '<p class="hint-note">Todas las personas con faltas pertenecen a cargos excluidos.</p>' : ''}
       ${top.map((p, i) => `
         <div>
           <div class="adhr-top-row">
             <div class="adhr-top-rank">#${i + 1}</div>
-            <div class="adhr-top-name">${p.nombre} <span style="color:var(--text-faint); font-size:11.5px;">(${p.personId})</span></div>
+            <div class="adhr-top-name">${p.nombre} <span style="color:var(--text-faint); font-size:11.5px;">(${p.personId}) · ${p.cargoReal}${p.rol ? ' · ' + p.rol : ''}</span></div>
             <div class="adhr-top-count">${p.faltas} falta${p.faltas === 1 ? '' : 's'}</div>
             <button class="adhr-top-toggle" data-toggle="adhrTopFechas_${i}" title="Ver fechas">▾ fechas</button>
           </div>
@@ -4500,6 +4528,16 @@
         </div>
       `).join('')}
     `;
+    box.querySelectorAll('#adhrTopCargos input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const nuevo = new Set(ADHR_TOP_EXCLUIDOS_MEM || cargosExcluidosTop());
+        const c = cargosPresentes[+cb.dataset.cargoIdx];
+        if (cb.checked) nuevo.add(c); else nuevo.delete(c);
+        ADHR_TOP_EXCLUIDOS_MEM = nuevo;
+        guardarCargosExcluidosTop(nuevo);
+        renderAdhrTopAusencias(datosPorDia, zonasAMostrar);
+      });
+    });
     box.querySelectorAll('.adhr-top-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
         const target = document.getElementById(btn.dataset.toggle);
@@ -4509,8 +4547,8 @@
       });
     });
     document.getElementById('btnAdhrExportTop').addEventListener('click', () => {
-      const headers = ['Cedula', 'Nombre', 'Faltas_en_rango', 'Fechas_de_falta'];
-      const rows = top.map(p => [p.personId, p.nombre, p.faltas, p.fechas.join(' | ')]);
+      const headers = ['Cedula', 'Nombre', 'Cargo', 'RolAsignado', 'Faltas_en_rango', 'Fechas_de_falta'];
+      const rows = top.map(p => [p.personId, p.nombre, p.cargoReal, p.rol, p.faltas, p.fechas.join(' | ')]);
       downloadCsv('top_inasistencias_ruta_' + new Date().toISOString().slice(0,10) + '.csv', toCsv(headers, rows));
     });
   }
@@ -4883,6 +4921,112 @@
     }
   }
   document.getElementById('btnExportDashboardUC').addEventListener('click', descargarDashboardUC);
+
+  // ================= Base global de asistencia en Excel =================
+  // TODAS las rutinas y grupos del CD (no solo UC), una fila por persona y
+  // sesión: quién asistió, quién faltó y quién tuvo excusa (Descanso Efectivo),
+  // con su cargo, hora y puntualidad. Misma unión designados + asistencias que
+  // la pestaña Adherencia, y respeta el rango Desde/Hasta de esa pestaña.
+  // Hoja 1 "Base global": formato largo con filtros (ideal para tabla dinámica).
+  // Hoja 2 "Matriz por fecha": una fila por persona y una columna por fecha.
+  async function descargarBaseGlobal(){
+    if (typeof ExcelJS === 'undefined'){ alert('No se pudo cargar el generador de Excel (sin conexión al CDN).'); return; }
+    const fDesde = document.getElementById('adhFechaDesde').value.trim();
+    const fHasta = document.getElementById('adhFechaHasta').value.trim();
+
+    const desig = DESIGNATION_LOG.filter(d => d.cd === selectedCD && fechaEnRango(d.fecha, fDesde, fHasta));
+    const asis = ATTENDANCE_LOG.filter(a => a.cd === selectedCD && fechaEnRango(a.fecha, fDesde, fHasta));
+    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+    const asisPorKey = new Map(asis.map(a => [a.personId + '|' + a.rutina + '|' + a.fecha, a]));
+    const sesiones = new Map();
+    const base = (r) => {
+      const pe = PEOPLE.find(x => x.id === r.personId) || {};
+      return { personId: r.personId, nombre: r.nombre || pe.nombre || '', cargo: r.cargo || pe.cargo || '', grupo: r.grupo || pe.grupo || '', rutina: r.rutina, fecha: r.fecha };
+    };
+    desig.forEach(d => sesiones.set(d.personId + '|' + d.rutina + '|' + d.fecha, base(d)));
+    asis.forEach(a => { const k = a.personId + '|' + a.rutina + '|' + a.fecha; if (!sesiones.has(k)) sesiones.set(k, base(a)); });
+
+    const filas = [...sesiones.entries()].map(([k, v]) => {
+      const a = asisPorKey.get(k);
+      const excusa = !a && RUTINAS_EXCUSABLES_DESCANSO.includes(v.rutina) && descansoSet.has(v.personId + '|' + v.fecha);
+      return { ...v, estado: a ? 'Asistió' : (excusa ? 'Excusa (Descanso Efectivo)' : 'Faltó'),
+        hora: a ? a.time : '', puntualidad: a ? (a.status === 'ok' ? 'A tiempo' : 'Tarde') : '', turno: a && a.turno ? a.turno : '' };
+    }).sort((x, y) => x.fecha.localeCompare(y.fecha) || x.rutina.localeCompare(y.rutina) || x.nombre.localeCompare(y.nombre));
+    if (!filas.length){ alert('No hay datos de asistencia en este rango de fechas para exportar.'); return; }
+
+    const DARK = 'FF2A1D14';
+    const hdr = (row) => row.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DARK } };
+      c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    });
+    const fill = (c, argb) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } }; };
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Adherencia Rutinas'; wb.created = new Date();
+
+    // ---- Hoja 1: Base global ----
+    const ws1 = wb.addWorksheet('Base global', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws1.getRow(1).values = ['Fecha', 'Rutina', 'Grupo', 'Cédula', 'Nombre', 'Cargo', 'Estado', 'Hora', 'Puntualidad', 'Turno']; hdr(ws1.getRow(1));
+    ws1.columns = [{ width: 12 }, { width: 22 }, { width: 9 }, { width: 14 }, { width: 34 }, { width: 28 }, { width: 24 }, { width: 12 }, { width: 14 }, { width: 8 }];
+    filas.forEach((f, i) => {
+      const row = ws1.getRow(i + 2);
+      row.values = [f.fecha, f.rutina, f.grupo, f.personId, f.nombre, f.cargo, f.estado, f.hora, f.puntualidad, f.turno];
+      fill(row.getCell(7), f.estado === 'Asistió' ? 'FFD9F2DD' : f.estado === 'Faltó' ? 'FFF8D3CE' : 'FFD6E4FB');
+    });
+    ws1.autoFilter = { from: 'A1', to: `J${filas.length + 1}` };
+
+    // ---- Hoja 2: Matriz por fecha ----
+    const fechas = [...new Set(filas.map(f => f.fecha))].sort();
+    const porPersona = new Map();
+    filas.forEach(f => {
+      let p = porPersona.get(f.personId);
+      if (!p) { p = { personId: f.personId, nombre: f.nombre, cargo: f.cargo, grupo: f.grupo, dias: {} }; porPersona.set(f.personId, p); }
+      const d = p.dias[f.fecha] || (p.dias[f.fecha] = { m: 0, n: 0, e: 0 });
+      d.m++; if (f.estado === 'Asistió') d.n++; else if (f.estado.startsWith('Excusa')) d.e++;
+    });
+    const personas = [...porPersona.values()].sort((a, b) => a.grupo.localeCompare(b.grupo) || a.nombre.localeCompare(b.nombre));
+    const ws2 = wb.addWorksheet('Matriz por fecha', { views: [{ state: 'frozen', xSplit: 4, ySplit: 1 }] });
+    ws2.getRow(1).values = ['Cédula', 'Nombre', 'Cargo', 'Grupo', ...fechas, 'Asistió (sesiones)', 'Sesiones', '% asistencia']; hdr(ws2.getRow(1));
+    ws2.getRow(1).height = 34;
+    ws2.columns = [{ width: 14 }, { width: 32 }, { width: 26 }, { width: 8 }, ...fechas.map(() => ({ width: 11 })), { width: 14 }, { width: 11 }, { width: 13 }];
+    const colL = (n) => { let t = ''; while (n > 0){ const m = (n - 1) % 26; t = String.fromCharCode(65 + m) + t; n = Math.floor((n - 1) / 26); } return t; };
+    const cTot = 5 + fechas.length; // columna "Asistió (sesiones)"
+    personas.forEach((p, i) => {
+      const r = i + 2, row = ws2.getRow(r);
+      let tn = 0, tm = 0;
+      row.getCell(1).value = p.personId; row.getCell(2).value = p.nombre; row.getCell(3).value = p.cargo; row.getCell(4).value = p.grupo;
+      fechas.forEach((fe, j) => {
+        const d = p.dias[fe]; const c = row.getCell(5 + j);
+        c.alignment = { horizontal: 'center' };
+        if (!d) { c.value = '—'; c.font = { color: { argb: 'FFB0A59A' } }; return; }
+        tn += d.n; tm += d.m;
+        c.value = `${d.n}/${d.m}` + (d.e ? ' (E)' : '');
+        fill(c, d.n === d.m ? 'FFD9F2DD' : (d.n + d.e === d.m ? 'FFD6E4FB' : (d.n > 0 ? 'FFFBEFC2' : 'FFF8D3CE')));
+      });
+      row.getCell(cTot).value = tn; row.getCell(cTot + 1).value = tm;
+      row.getCell(cTot + 2).value = { formula: `IFERROR(${colL(cTot)}${r}/${colL(cTot + 1)}${r},0)`, result: tm ? tn / tm : 0 };
+      row.getCell(cTot + 2).numFmt = '0%';
+      [cTot, cTot + 1, cTot + 2].forEach(k => row.getCell(k).alignment = { horizontal: 'center' });
+    });
+    ws2.autoFilter = { from: 'A1', to: `${colL(cTot + 2)}${personas.length + 1}` };
+    const nota = ws2.getRow(personas.length + 3).getCell(2);
+    nota.value = 'Cada celda = sesiones asistidas / sesiones del día. Verde: asistió a todas · Amarillo: a algunas · Rojo: a ninguna · Azul: sin asistir pero con excusa (E) · — : sin sesión ese día.';
+    nota.font = { italic: true, color: { argb: 'FF7A6A5B' } };
+
+    try {
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `base_global_asistencia_${selectedCD}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error('No se pudo generar el Excel:', err);
+      alert('No se pudo generar el archivo. Intenta de nuevo.');
+    }
+  }
+  document.getElementById('btnExportBaseGlobal').addEventListener('click', descargarBaseGlobal);
 
   document.getElementById('btnExportAsistencias').addEventListener('click', () => {
     const headers = ['Rutina', 'Fecha', 'CD', 'Cedula', 'Nombre', 'Cargo', 'Grupo', 'Estado', 'Hora'];

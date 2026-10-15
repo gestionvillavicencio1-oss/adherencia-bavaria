@@ -795,6 +795,31 @@
   .adhr-cmp-delta-pill.flat{ background:var(--surface-2); color:var(--text-faint); border:1px solid var(--border); }
   .adhr-cmp-arrow-svg{ width:90%; height:22px; }
   .adhr-tooltip-num{font-size:9.5px; color:var(--text-faint);}
+  .adhr-chart-outer{display:flex; gap:6px; align-items:flex-start;}
+  .adhr-yaxis{position:relative; width:40px; flex-shrink:0; height:360px; margin-top:10px;}
+  .adhr-ytick{position:absolute; right:4px; transform:translateY(-50%); font-size:10px; color:var(--text-faint);}
+  .adhr-chart-scroll{flex:1; min-width:0; overflow-x:auto; padding-bottom:6px;}
+  .adhr-chart-inner{position:relative; display:flex; align-items:flex-start; gap:26px; padding-top:10px; min-width:max-content;}
+  .adhr-gridline{position:absolute; left:0; right:0; border-top:1px dashed var(--border); pointer-events:none;}
+  .adhr-chart-inner .adhr-day{position:relative; z-index:1; min-width:104px;}
+  .adhr-chart-inner .adhr-col{width:44px;}
+  .adhr-chart-inner .adhr-col-wrap{display:flex; flex-direction:column; align-items:center; width:48px;}
+  .adhr-zona-tag{font-size:11px; font-weight:700; margin-top:6px; color:var(--text);}
+  .adhr-pct{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px; margin-top:4px;}
+  .adhr-pct.ok{background:rgba(124,214,138,0.18); color:#7cd68a;}
+  .adhr-pct.mid{background:rgba(240,193,78,0.18); color:#f0c14e;}
+  .adhr-pct.bad{background:rgba(232,67,47,0.16); color:#e8432f;}
+  .adhr-pct.na{background:var(--surface-2); color:var(--text-faint);}
+  .adhr-day-sub{font-size:10px; color:var(--text-faint);}
+  .adhr-seg.sel{outline:2px solid var(--text); outline-offset:-2px;}
+  .adhr-legend-row{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;}
+  .adhr-modo{display:flex; gap:6px;}
+  .adhr-modo button{background:var(--surface-2); border:1.5px solid var(--border); color:var(--text-dim); border-radius:100px; padding:5px 12px; font-size:11.5px; cursor:pointer;}
+  .adhr-modo button.on{border-color:#7cd68a; color:#7cd68a; font-weight:700;}
+  .adhr-des-bar{display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:10px; padding:10px 12px; background:var(--surface-2); border:1px dashed var(--border); border-radius:12px; font-size:12px;}
+  .adhr-sinasig{margin-bottom:18px; border:1.5px solid #f0c14e; background:rgba(240,193,78,0.07); border-radius:14px; padding:10px 16px; font-size:13px;}
+  .adhr-sinasig.ok{border-color:var(--border); background:var(--surface-2); color:var(--text-faint);}
+  .adhr-sinasig summary{cursor:pointer; font-weight:700;}
   .adhp-row:hover{background:rgba(232,185,35,0.04);}
   .adhp-caret{transition:transform .12s ease; color:var(--text-faint);}
   .adhp-detail-group td{border-bottom:1px solid var(--border);}
@@ -1420,8 +1445,9 @@
       </div>
       <p class="adh-note">Compara, día por día y por zona, cuántas personas estaban <b>realmente asignadas</b> (según el Excel de asignación por ruta) contra cuántas <b>asistieron</b> (QR) y cuántas tuvieron <b>excusa</b> (Descanso Efectivo) — el resto son las que <b>faltaron</b>. El escaneo nunca se restringe por esta asignación: cualquier persona de UC puede marcar en cualquier matinal; esta vista solo mide qué tan real fue la asignación planeada frente a lo que pasó.</p>
 
-      <div class="descanso-card">
-        <div class="descanso-card-head">
+      <details class="descanso-card" id="nominasDetails">
+        <summary style="cursor:pointer; font-weight:700; font-size:14px;">⚙ Asignación NOMINAS — cargar o actualizar (clic para abrir)</summary>
+        <div class="descanso-card-head" style="margin-top:12px;">
           <div>
             <div class="descanso-card-title">Cargar asignación real por ruta (NOMINAS)</div>
             <div class="descanso-card-sub">Sube el Excel "NOMINAS" con las hojas de Zona Población y Zona Metro (Conductor / Responsable de Reparto / Auxiliares) — se lee en el navegador, nada se sube a ningún servidor externo. La versión que subas aplica desde la fecha de vigencia que elijas <b>en adelante</b>, hasta que subas una nueva.</div>
@@ -1436,7 +1462,9 @@
           <span id="nominasFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
         </div>
         <div id="nominasPreview"></div>
-      </div>
+      </details>
+
+      <div id="adhrSinAsigWrap"></div>
 
       <div class="adh-filters">
         <select id="adhrZona">
@@ -4081,6 +4109,7 @@
       const file = fileInput.files[0];
       if (!file) return;
       fileNameLabel.textContent = file.name;
+      const detNom = document.getElementById('nominasDetails'); if (detNom) detNom.open = true;
       nominasParseado = null;
       previewBox.innerHTML = '<div class="descanso-preview-box">Leyendo archivo…</div>';
 
@@ -4331,6 +4360,7 @@
   // estado) para que el clic en un segmento pueda armar la lista sin volver a
   // recorrer todo — se recalcula en cada render junto con datosPorDia.
   let ADHR_DETALLE_CACHE = {};
+  let ADHR_MODO = 'cant'; // 'cant' = cantidades | 'pct' = barras al 100% del día
   // Último día/zonas graficados, para poder recalcular el promedio general de
   // hora de marcación cuando se vuelve del promedio "de un día" (clic en
   // barra verde) al promedio del rango/zona completos, sin tener que rehacer
@@ -4419,60 +4449,102 @@
       return;
     }
 
-    const maxTotal = Math.max(1, ...datosPorDia.flatMap(d => zonasAMostrar.map(z => d[z].total)));
+    const maxTotalReal = Math.max(1, ...datosPorDia.flatMap(d => zonasAMostrar.map(z => d[z].total)));
     const alturaMaxPx = 360;
-    // Altura del contenedor de la barra, proporcional a su total frente al
-    // total más grande del rango visible (así todas las barras son comparables
-    // entre sí, no solo dentro de su propio día).
-    const alturaColPx = (total) => Math.max(Math.round((total / maxTotal) * alturaMaxPx), total > 0 ? 6 : 2);
-    // Los 3 segmentos dentro de una barra siempre sí suman 100% de SU PROPIA
-    // altura (no de maxTotal) — así se ve la composición interna aunque la
-    // barra sea más chica que otras. Cada segmento lleva su número visible
-    // (si hay espacio) y es clicable para abrir el detalle de esa categoría.
+    const modoPct = ADHR_MODO === 'pct';
+    // Escala "bonita" del eje Y (máx. ~5 divisiones) para que las barras de
+    // distintos días se puedan comparar contra las mismas líneas guía.
+    const pasoY = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find(st => Math.ceil(maxTotalReal / st) <= 5) || 1000;
+    const escalaMax = modoPct ? 100 : Math.ceil(maxTotalReal / pasoY) * pasoY;
+    const ticks = modoPct ? [0, 25, 50, 75, 100] : Array.from({ length: escalaMax / pasoY + 1 }, (_, k) => k * pasoY);
+    const alturaColPx = (total) => modoPct
+      ? (total > 0 ? alturaMaxPx : 2)
+      : Math.max(Math.round((total / escalaMax) * alturaMaxPx), total > 0 ? 6 : 2);
+    // Los 3 segmentos dentro de una barra siempre suman 100% de SU PROPIA
+    // altura; cada segmento lleva su número (si hay espacio) y es clicable
+    // para abrir el detalle de esa categoría.
     const segHtml = (seg, fecha, zona) => {
       const total = seg.total;
       if (total === 0) return '<div class="adhr-seg" style="height:100%; background:var(--surface-2);"></div>';
       const pct = (v) => (v / total) * 100;
-      const numOrBlank = (v) => (v > 0 && pct(v) >= 9) ? `<span class="adhr-seg-num">${v}</span>` : '';
+      const numOrBlank = (v) => (v > 0 && pct(v) >= 7) ? `<span class="adhr-seg-num">${v}</span>` : '';
       return `
-        <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Faltó">${numOrBlank(seg.faltaron)}</div>
-        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Excusa (Descanso Efectivo)">${numOrBlank(seg.excusa)}</div>
-        <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Asistió">${numOrBlank(seg.asistieron)}</div>
+        <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Faltó">${numOrBlank(seg.faltaron)}</div>
+        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Excusa (Descanso Efectivo)">${numOrBlank(seg.excusa)}</div>
+        <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Asistió">${numOrBlank(seg.asistieron)}</div>
       `;
     };
-
+    // % de adherencia = asistieron ÷ (asignados − excusa): quien tiene
+    // Descanso Efectivo no cuenta en contra.
+    const adhPct = (z) => { const den = z.total - z.excusa; return den > 0 ? Math.round((z.asistieron / den) * 100) : null; };
+    const adhClase = (v) => v === null ? 'na' : v >= 90 ? 'ok' : v >= 75 ? 'mid' : 'bad';
     const zonaLabel = { Poblaciones: 'Población', Metro: 'Metro' };
+    const diaSemana = (f) => new Date(f + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' });
 
     wrap.innerHTML = `
-      <div class="adhr-legend">
-        <div class="adhr-legend-item"><span class="adhr-legend-dot asistio"></span>Asistieron (QR)</div>
-        <div class="adhr-legend-item"><span class="adhr-legend-dot excusa"></span>Excusa (Descanso Efectivo)</div>
-        <div class="adhr-legend-item"><span class="adhr-legend-dot falto"></span>Faltaron</div>
+      <div class="adhr-legend-row">
+        <div class="adhr-legend" style="margin-bottom:0;">
+          <div class="adhr-legend-item"><span class="adhr-legend-dot asistio"></span>Asistieron (QR)</div>
+          <div class="adhr-legend-item"><span class="adhr-legend-dot excusa"></span>Excusa (Descanso Efectivo)</div>
+          <div class="adhr-legend-item"><span class="adhr-legend-dot falto"></span>Faltaron</div>
+        </div>
+        <div class="adhr-modo">
+          <button data-modo="cant" class="${modoPct ? '' : 'on'}">Cantidad</button>
+          <button data-modo="pct" class="${modoPct ? 'on' : ''}">% del día (100%)</button>
+        </div>
       </div>
-      <div class="adhr-chart">
-        ${datosPorDia.map(d => `
-          <div class="adhr-day">
-            <div class="adhr-day-cols">
-              ${zonasAMostrar.map(zona => `
-                <div>
-                  <div class="adhr-col" style="height:${alturaColPx(d[zona].total)}px;">${segHtml(d[zona], d.fecha, zona)}</div>
-                  <div class="adhr-col-label">${zonaLabel[zona]}<br>${d[zona].asistieron}+${d[zona].excusa}+${d[zona].faltaron} de ${d[zona].total}</div>
+      <div class="adhr-chart-outer">
+        <div class="adhr-yaxis">
+          ${ticks.map(t => `<div class="adhr-ytick" style="top:${alturaMaxPx * (1 - t / escalaMax)}px;">${t}${modoPct ? '%' : ''}</div>`).join('')}
+        </div>
+        <div class="adhr-chart-scroll">
+          <div class="adhr-chart-inner">
+            ${ticks.map(t => `<div class="adhr-gridline" style="top:${10 + alturaMaxPx * (1 - t / escalaMax)}px;"></div>`).join('')}
+            ${datosPorDia.map(d => `
+              <div class="adhr-day">
+                <div class="adhr-day-cols">
+                  ${zonasAMostrar.map(zona => {
+                    const pv = adhPct(d[zona]);
+                    return `
+                    <div class="adhr-col-wrap">
+                      <div class="adhr-col" style="height:${alturaColPx(d[zona].total)}px;">${segHtml(d[zona], d.fecha, zona)}</div>
+                    </div>`;
+                  }).join('')}
                 </div>
-              `).join('')}
-            </div>
-            <div class="adhr-day-label">${d.fecha}</div>
+                <div style="display:flex; gap:8px; margin-top:4px;">
+                  ${zonasAMostrar.map(zona => {
+                    const pv = adhPct(d[zona]);
+                    return `<div style="width:48px; text-align:center;">
+                      <div class="adhr-zona-tag">${zonaLabel[zona]}</div>
+                      <span class="adhr-pct ${adhClase(pv)}" title="Adherencia = asistieron ÷ (asignados − excusa)">${pv === null ? '—' : pv + '%'}</span>
+                      <div class="adhr-day-sub">${d[zona].asistieron}+${d[zona].excusa}+${d[zona].faltaron}<br>de ${d[zona].total}</div>
+                    </div>`;
+                  }).join('')}
+                </div>
+                <div class="adhr-day-label">${diaSemana(d.fecha)}</div>
+                <div class="adhr-day-sub">${d.fecha}</div>
+              </div>
+            `).join('')}
           </div>
-        `).join('')}
+        </div>
       </div>
+      <p class="hint-note" style="margin-top:8px;">Número bajo cada barra = asistieron + excusa + faltaron de asignados · % = asistieron ÷ (asignados − excusa) · verde ≥ 90%, amarillo ≥ 75%, rojo menos. Clic en un color para ver las personas; desde "Faltaron" puedes desasignar a quien no debía estar.</p>
     `;
 
+    wrap.querySelectorAll('.adhr-modo button').forEach(b => b.addEventListener('click', () => {
+      ADHR_MODO = b.dataset.modo;
+      renderAdherenciaRuta();
+    }));
     wrap.querySelectorAll('.adhr-seg[data-fecha]').forEach(seg => {
       seg.addEventListener('click', () => {
+        wrap.querySelectorAll('.adhr-seg.sel').forEach(x => x.classList.remove('sel'));
+        seg.classList.add('sel');
         mostrarDetalleAdhrSegmento(seg.dataset.fecha, seg.dataset.zona, seg.dataset.cat);
       });
     });
 
     ADHR_ULTIMO_RANGO = { datosPorDia, zonasAMostrar };
+    renderAdhrSinAsignacion(dias);
     renderAdhrPromedios(datosPorDia, zonasAMostrar);
     renderAdhrTopAusencias(datosPorDia, zonasAMostrar);
     renderAdhrComparacion();
@@ -4634,6 +4706,66 @@
   // Detalle persona-por-persona de un segmento específico (fecha+zona+categoría)
   // del gráfico — se llena desde ADHR_DETALLE_CACHE, con exportación a CSV
   // pensada explícitamente para tomar medidas contra quienes han faltado.
+  // Aviso: personas que marcaron Matinal Poblaciones/Metro en días del rango
+  // visible pero NO estaban en la asignación NOMINAS vigente ese día.
+  function renderAdhrSinAsignacion(dias){
+    const box = document.getElementById('adhrSinAsigWrap');
+    if (!box) return;
+    const diasSet = new Set(dias);
+    const idsPorFecha = new Map();
+    const porPersona = new Map();
+    ATTENDANCE_LOG.forEach(a => {
+      if (a.cd !== selectedCD || !diasSet.has(a.fecha)) return;
+      if (a.rutina !== 'Matinal Poblaciones' && a.rutina !== 'Matinal Metro') return;
+      if (!idsPorFecha.has(a.fecha)){
+        const v = asignacionVigenteEnFecha(selectedCD, a.fecha);
+        idsPorFecha.set(a.fecha, v ? new Set(v.personas.map(p => String(p.personId))) : null);
+      }
+      const ids = idsPorFecha.get(a.fecha);
+      if (!ids || ids.has(String(a.personId))) return;
+      const k = String(a.personId);
+      if (!porPersona.has(k)) porPersona.set(k, { personId: k, nombre: a.nombre || '', cargo: a.cargo || '', fechas: new Set(), rutinas: new Set() });
+      const r = porPersona.get(k);
+      r.fechas.add(a.fecha); r.rutinas.add(a.rutina.replace('Matinal ', ''));
+    });
+    if (porPersona.size === 0){
+      box.innerHTML = '<div class="adhr-sinasig ok">✓ Todas las marcaciones de matinal del rango visible corresponden a personas asignadas en NOMINAS.</div>';
+      return;
+    }
+    const lista = [...porPersona.values()].sort((x, y) => y.fechas.size - x.fechas.size || x.nombre.localeCompare(y.nombre));
+    box.innerHTML = `
+      <details class="adhr-sinasig" open>
+        <summary>⚠ ${lista.length} persona${lista.length === 1 ? '' : 's'} marcaron matinal SIN estar asignadas en NOMINAS (rango visible)</summary>
+        <p class="hint-note" style="margin:8px 0;">Estas personas escanearon en una matinal pero no aparecen en la asignación vigente de ese día. Si deben asistir, agrégalas al Excel NOMINAS y súbelo de nuevo; si no, son marcas de más.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Cédula</th><th>Nombre</th><th>Cargo</th><th>Matinal</th><th>Días</th><th>Fechas</th></tr></thead>
+          <tbody>${lista.map(r => `<tr><td>${r.personId}</td><td>${r.nombre || '—'}</td><td>${r.cargo || '—'}</td><td>${[...r.rutinas].join(' / ')}</td><td>${r.fechas.size}</td><td>${[...r.fechas].sort().join(', ')}</td></tr>`).join('')}</tbody>
+        </table></div>
+        <button class="btn-secondary" id="btnAdhrSinAsigCsv" style="flex:none; padding:6px 12px; font-size:12px; margin-top:8px;">Descargar CSV</button>
+      </details>`;
+    document.getElementById('btnAdhrSinAsigCsv').addEventListener('click', () => {
+      downloadCsv('marcaron_sin_asignacion.csv', toCsv(['Cedula', 'Nombre', 'Cargo', 'Matinal', 'Dias', 'Fechas'],
+        lista.map(r => [r.personId, r.nombre, r.cargo, [...r.rutinas].join(' / '), r.fechas.size, [...r.fechas].sort().join(' | ')])));
+    });
+  }
+
+  // Quita personas de la asignación: de TODAS las versiones vigentes hasta
+  // `fecha` (esa fecha y las anteriores) y, si incluirPosteriores, también de
+  // las versiones posteriores. Devuelve cuántas versiones se modificaron.
+  async function desasignarPersonas(idsSet, fecha, incluirPosteriores){
+    let tocadas = 0;
+    for (const v of ASIGNACION_RUTA_LOG.filter(x => x.cd === selectedCD).slice()){
+      if (!incluirPosteriores && v.vigenciaDesde > fecha) continue;
+      const antes = v.personas || [];
+      const despues = antes.filter(p => !idsSet.has(String(p.personId)));
+      if (despues.length !== antes.length){
+        await guardarAsignacionRuta({ vigenciaDesde: v.vigenciaDesde, personas: despues });
+        tocadas++;
+      }
+    }
+    return tocadas;
+  }
+
   function mostrarDetalleAdhrSegmento(fecha, zona, categoria){
     const detalle = (ADHR_DETALLE_CACHE[fecha + '|' + zona] || []).filter(p => p.estado === categoria);
     const zonaLabel = { Poblaciones: 'Población', Metro: 'Metro' }[zona] || zona;
@@ -4656,16 +4788,50 @@
         </div>
         <button class="btn-secondary" id="btnAdhrExportDetalle" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
       </div>
+      ${esAsistio ? '' : `
+      <div class="adhr-des-bar">
+        <b>Desasignar:</b> marca a quienes NO deben estar en la asignación
+        <label style="display:flex; gap:6px; align-items:center; cursor:pointer;"><input type="checkbox" id="adhrDesPost" checked> también de fechas posteriores</label>
+        <button class="btn-secondary" id="btnAdhrDesasignar" style="flex:none; padding:6px 12px; font-size:12px; border-color:#e8432f; color:#e8432f;" disabled>Desasignar seleccionados (0)</button>
+      </div>`}
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th><th>Hora de marcación</th><th></th></tr></thead>
+          <thead><tr>${esAsistio ? '' : '<th style="width:28px;"><input type="checkbox" id="adhrDesTodos" title="Seleccionar todos"></th>'}<th>Cédula</th><th>Nombre</th><th>Rol asignado</th><th>Estado</th><th>Hora de marcación</th><th></th></tr></thead>
           <tbody>
-            ${detalle.length === 0 ? '<tr><td colspan="6" class="empty-state">Nadie en esta categoría.</td></tr>' :
-              detalle.map((p, i) => `<tr><td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td><td>${horaCelda(p)}</td><td>${esAsistio ? '' : `<button class="btn-secondary" data-reg-asist="${i}" style="flex:none; padding:5px 10px; font-size:11.5px;">Registrar asistencia</button>`}</td></tr>`).join('')}
+            ${detalle.length === 0 ? '<tr><td colspan="7" class="empty-state">Nadie en esta categoría.</td></tr>' :
+              detalle.map((p, i) => `<tr>${esAsistio ? '' : `<td><input type="checkbox" class="adhr-des-chk" data-i="${i}"></td>`}<td>${p.personId}</td><td>${p.nombre}</td><td>${p.cargo || '—'}</td><td>${p.estado}</td><td>${horaCelda(p)}</td><td>${esAsistio ? '' : `<button class="btn-secondary" data-reg-asist="${i}" style="flex:none; padding:5px 10px; font-size:11.5px;">Registrar asistencia</button>`}</td></tr>`).join('')}
           </tbody>
         </table>
       </div>
     `;
+    if (!esAsistio){
+      const chks = [...box.querySelectorAll('.adhr-des-chk')];
+      const btnDes = document.getElementById('btnAdhrDesasignar');
+      const refrescarBtn = () => {
+        const n = chks.filter(c => c.checked).length;
+        btnDes.disabled = n === 0;
+        btnDes.textContent = `Desasignar seleccionados (${n})`;
+      };
+      chks.forEach(c => c.addEventListener('change', refrescarBtn));
+      const todos = document.getElementById('adhrDesTodos');
+      if (todos) todos.addEventListener('change', () => { chks.forEach(c => { c.checked = todos.checked; }); refrescarBtn(); });
+      btnDes.addEventListener('click', async () => {
+        const elegidos = chks.filter(c => c.checked).map(c => detalle[+c.dataset.i]);
+        if (!elegidos.length) return;
+        const post = document.getElementById('adhrDesPost').checked;
+        const nombres = elegidos.slice(0, 8).map(p => '• ' + p.nombre).join('\n') + (elegidos.length > 8 ? `\n… y ${elegidos.length - 8} más` : '');
+        if (!confirm(`¿Desasignar ${elegidos.length} persona(s) de la asignación?\n\n${nombres}\n\nSe quitarán del ${fecha} y de todas las fechas anteriores${post ? ' y posteriores' : ''}. Esto cambia los gráficos y el histórico de adherencia (las marcaciones ya registradas no se borran).`)) return;
+        btnDes.disabled = true; btnDes.textContent = 'Desasignando…';
+        try {
+          const n = await desasignarPersonas(new Set(elegidos.map(p => String(p.personId))), fecha, post);
+          alert(`Listo: ${elegidos.length} persona(s) desasignada(s) (${n} versión(es) de asignación actualizada(s)).`);
+        } catch (e) {
+          console.error('No se pudo desasignar:', e);
+          alert('No se pudo desasignar. Revisa tu conexión e inténtalo de nuevo.');
+          btnDes.disabled = false; refrescarBtn();
+        }
+      });
+    }
     box.querySelectorAll('[data-reg-asist]').forEach(btn => {
       btn.addEventListener('click', () => {
         const p = detalle[+btn.dataset.regAsist];

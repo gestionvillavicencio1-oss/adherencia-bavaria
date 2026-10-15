@@ -4063,6 +4063,7 @@
     return { personas, avisos };
   }
 
+  let nominasExcluidasIds = new Set();
   function setupAsignacionRutaUI(){
     const fechaInput = document.getElementById('nominasFecha');
     if (fechaInput.dataset.filled) return;
@@ -4113,6 +4114,36 @@
           </div>
         `).join('');
 
+        // Exclusión por cargo real (colaboradores.cargo): lista los cargos
+        // presentes en el archivo y pre-marca los que contengan "JL".
+        const cargoDe = p => ((peopleById.get(p.personId) || {}).cargo || '').toString().trim();
+        const conteoCargos = new Map();
+        const cedulasPorCargo = new Map();
+        personas.forEach(p => {
+          const c = cargoDe(p) || '(sin cargo en colaboradores)';
+          if (!cedulasPorCargo.has(c)) cedulasPorCargo.set(c, new Set());
+          cedulasPorCargo.get(c).add(p.personId);
+        });
+        cedulasPorCargo.forEach((set, c) => conteoCargos.set(c, set.size));
+        const cargosOrdenados = [...conteoCargos.keys()].sort((a, b) => {
+          const ja = /\bJL\b/i.test(a) ? 0 : 1, jb = /\bJL\b/i.test(b) ? 0 : 1;
+          return ja - jb || a.localeCompare(b);
+        });
+        const exclHtml = `
+          <div class="descanso-preview-title" style="margin-top:10px;">Excluir de la asignación (marca los cargos que NO deben asistir, p. ej. conductores JL)</div>
+          <div id="nominasExclBox" style="display:flex; flex-direction:column; gap:4px; margin:6px 0 4px;">
+            ${cargosOrdenados.map((c, i) => `
+              <label style="display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer;">
+                <input type="checkbox" class="nominas-excl-chk" data-cargo="${c.replace(/"/g, '&quot;')}" ${/\bJL\b/i.test(c) ? 'checked' : ''}>
+                <span>${c} <b>(${conteoCargos.get(c)})</b></span>
+              </label>`).join('')}
+          </div>
+          <label style="display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer; margin:6px 0;">
+            <input type="checkbox" id="nominasExclRetro" checked>
+            <span><b>Aplicar también a días anteriores</b>: quitar a estas personas de TODAS las versiones ya guardadas (corrige el histórico)</span>
+          </label>
+          <div id="nominasExclResumen" class="descanso-preview-warn" style="display:none;"></div>`;
+
         const avisosHtml = [
           ...avisos,
           ...(sinCruzar.length ? [`${sinCruzar.length} cédula(s) del archivo no se encontraron entre los colaboradores de este CD (revisa si son de otro CD, si la persona ya no está activa, o si la cédula está mal escrita) — igual se guardan, pero no aparecerán en el gráfico hasta que existan en Colaboradores.`] : []),
@@ -4122,6 +4153,7 @@
           <div class="descanso-preview-box">
             <div class="descanso-preview-title">${personas.length} registro(s) leído(s) · vigente desde ${vigenciaDesde}</div>
             ${avisosHtml}
+            ${exclHtml}
             ${listaHtml}
             <div style="display:flex; gap:10px; margin-top:10px;">
               <button class="btn-add" id="btnNominasGuardar" style="flex:none;">Guardar asignación vigente desde ${vigenciaDesde}</button>
@@ -4129,6 +4161,19 @@
             </div>
           </div>
         `;
+
+        const actualizarExclusion = () => {
+          const marcados = new Set([...previewBox.querySelectorAll('.nominas-excl-chk:checked')].map(x => x.dataset.cargo));
+          const fuera = personas.filter(p => marcados.has(cargoDe(p) || '(sin cargo en colaboradores)'));
+          nominasParseado = { vigenciaDesde, personas: personas.filter(p => !fuera.includes(p)) };
+          nominasExcluidasIds = new Set(fuera.map(p => p.personId));
+          const cedFuera = new Set(fuera.map(p => p.personId)).size;
+          const res = document.getElementById('nominasExclResumen');
+          res.style.display = fuera.length ? '' : 'none';
+          res.textContent = fuera.length ? `Se excluirán ${cedFuera} persona(s) (${fuera.length} registro(s)). Se guardarán ${nominasParseado.personas.length} registro(s).` : '';
+        };
+        previewBox.querySelectorAll('.nominas-excl-chk').forEach(x => x.addEventListener('change', actualizarExclusion));
+        actualizarExclusion();
 
         document.getElementById('btnNominasCancelar').addEventListener('click', () => {
           nominasParseado = null;
@@ -4144,7 +4189,19 @@
           btn.textContent = 'Guardando…';
           try {
             await guardarAsignacionRuta(nominasParseado);
-            previewBox.innerHTML = `<div class="descanso-preview-box">✓ Guardado: asignación vigente desde ${nominasParseado.vigenciaDesde} (${nominasParseado.personas.length} registros).</div>`;
+            let retroN = 0;
+            const retro = document.getElementById('nominasExclRetro');
+            if (retro && retro.checked && nominasExcluidasIds.size){
+              for (const v of ASIGNACION_RUTA_LOG.slice()){
+                if (v.vigenciaDesde === nominasParseado.vigenciaDesde) continue;
+                const filtradas = (v.personas || []).filter(p => !nominasExcluidasIds.has(p.personId));
+                if (filtradas.length !== (v.personas || []).length){
+                  await guardarAsignacionRuta({ vigenciaDesde: v.vigenciaDesde, personas: filtradas });
+                  retroN++;
+                }
+              }
+            }
+            previewBox.innerHTML = `<div class="descanso-preview-box">✓ Guardado: asignación vigente desde ${nominasParseado.vigenciaDesde} (${nominasParseado.personas.length} registros).${retroN ? ` Además se limpiaron ${retroN} versión(es) anterior(es).` : ''}</div>`;
             nominasParseado = null;
             fileInput.value = '';
             fileNameLabel.textContent = 'Ningún archivo elegido.';
@@ -4493,8 +4550,7 @@
     const excluidos = ADHR_TOP_EXCLUIDOS_MEM || cargosExcluidosTop();
     const top = todos
       .filter(p => !excluidos.has(p.cargoReal))
-      .sort((a, b) => b.faltas - a.faltas || a.nombre.localeCompare(b.nombre))
-      .slice(0, 20);
+      .sort((a, b) => b.faltas - a.faltas || a.nombre.localeCompare(b.nombre));
 
     const box = document.getElementById('adhrTopWrap');
     if (todos.length === 0){
@@ -4504,7 +4560,7 @@
     const nExcl = todos.filter(p => excluidos.has(p.cargoReal)).length;
     box.innerHTML = `
       <div class="section-head" style="margin-bottom:10px;">
-        <div class="section-title" style="font-size:15px;">Top de inasistencias reiterativas (rango visible)</div>
+        <div class="section-title" style="font-size:15px;">Top de inasistencias reiterativas (rango visible) · ${top.length} persona${top.length === 1 ? '' : 's'}</div>
         <button class="btn-secondary" id="btnAdhrExportTop" style="flex:none; padding:7px 12px; font-size:12px;">Descargar CSV</button>
       </div>
       <div class="extra-rutinas" style="margin:0 0 12px;">

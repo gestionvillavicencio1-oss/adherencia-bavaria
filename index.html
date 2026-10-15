@@ -4064,6 +4064,7 @@
   }
 
   let nominasExcluidasIds = new Set();
+  let nominasFaltantesIds = new Set();
   function setupAsignacionRutaUI(){
     const fechaInput = document.getElementById('nominasFecha');
     if (fechaInput.dataset.filled) return;
@@ -4144,6 +4145,22 @@
           </label>
           <div id="nominasExclResumen" class="descanso-preview-warn" style="display:none;"></div>`;
 
+        // Personas que están en versiones ya guardadas pero NO en este archivo
+        // (p. ej. las que el admin borró del Excel por error de asignación).
+        const idsNuevo = new Set(personas.map(p => p.personId));
+        const faltantesMap = new Map();
+        ASIGNACION_RUTA_LOG.forEach(v => (v.personas || []).forEach(p => {
+          if (!idsNuevo.has(p.personId) && !faltantesMap.has(p.personId)) faltantesMap.set(p.personId, p.nombre || p.personId);
+        }));
+        nominasFaltantesIds = new Set(faltantesMap.keys());
+        const faltHtml = faltantesMap.size ? `
+          <div class="descanso-preview-title" style="margin-top:10px;">Personas que ya no están en este archivo: ${faltantesMap.size}</div>
+          <div class="descanso-preview-list">${[...faltantesMap].map(([id, n]) => `<div class="descanso-preview-item"><span>${n}</span><span>${id}</span></div>`).join('')}</div>
+          <label style="display:flex; gap:8px; align-items:center; font-size:13px; cursor:pointer; margin:6px 0;">
+            <input type="checkbox" id="nominasFaltRetro" checked>
+            <span><b>Quitarlas también de los días anteriores</b> (de todas las versiones ya guardadas)</span>
+          </label>` : '';
+
         const avisosHtml = [
           ...avisos,
           ...(sinCruzar.length ? [`${sinCruzar.length} cédula(s) del archivo no se encontraron entre los colaboradores de este CD (revisa si son de otro CD, si la persona ya no está activa, o si la cédula está mal escrita) — igual se guardan, pero no aparecerán en el gráfico hasta que existan en Colaboradores.`] : []),
@@ -4153,6 +4170,7 @@
           <div class="descanso-preview-box">
             <div class="descanso-preview-title">${personas.length} registro(s) leído(s) · vigente desde ${vigenciaDesde}</div>
             ${avisosHtml}
+            ${faltHtml}
             ${exclHtml}
             ${listaHtml}
             <div style="display:flex; gap:10px; margin-top:10px;">
@@ -4191,10 +4209,14 @@
             await guardarAsignacionRuta(nominasParseado);
             let retroN = 0;
             const retro = document.getElementById('nominasExclRetro');
-            if (retro && retro.checked && nominasExcluidasIds.size){
+            const faltChk = document.getElementById('nominasFaltRetro');
+            const idsQuitar = new Set();
+            if (retro && retro.checked) nominasExcluidasIds.forEach(i => idsQuitar.add(i));
+            if (faltChk && faltChk.checked) nominasFaltantesIds.forEach(i => idsQuitar.add(i));
+            if (idsQuitar.size){
               for (const v of ASIGNACION_RUTA_LOG.slice()){
                 if (v.vigenciaDesde === nominasParseado.vigenciaDesde) continue;
-                const filtradas = (v.personas || []).filter(p => !nominasExcluidasIds.has(p.personId));
+                const filtradas = (v.personas || []).filter(p => !idsQuitar.has(p.personId));
                 if (filtradas.length !== (v.personas || []).length){
                   await guardarAsignacionRuta({ vigenciaDesde: v.vigenciaDesde, personas: filtradas });
                   retroN++;

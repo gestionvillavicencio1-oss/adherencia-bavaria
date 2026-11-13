@@ -419,6 +419,8 @@
   }
   .pyk-cat-btn.active .pyk-cat-num{ background:var(--gold); border-color:var(--gold); color:#0a0604; }
   .pyk-cat-name{ font-size:14px; font-weight:600; }
+  .pyk-input{ width:100%; max-width:420px; background:var(--surface-2); border:1.5px solid var(--border); border-radius:12px; padding:11px 14px; color:var(--text); font:inherit; font-size:14px; }
+  .pyk-input:focus{ outline:none; border-color:var(--gold); }
   .pyk-sub-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
   .pyk-sub-btn{
     background:var(--surface-2); border:1.5px solid var(--border); color:var(--text-dim); border-radius:100px;
@@ -1876,6 +1878,16 @@
           <div class="pyk-step-label" id="pykSubLabel">2. Elige la opción</div>
           <div class="pyk-sub-row" id="pykSubRow"></div>
         </div>
+        <div class="pyk-step" id="pykTrainStep" hidden>
+          <div class="pyk-step-label">3. ¿Se va a realizar un entrenamiento?</div>
+          <div class="pyk-sub-row" id="pykTrainRow" style="margin-top:0;">
+            <button type="button" class="pyk-sub-btn" data-train="no">No, solo la rutina</button>
+            <button type="button" class="pyk-sub-btn" data-train="si">Sí, hay entrenamiento</button>
+          </div>
+          <div id="pykTrainNameWrap" hidden style="margin-top:12px;">
+            <input type="text" id="pykTrainName" class="pyk-input" maxlength="80" placeholder="Nombre del entrenamiento (p. ej. Seguridad vial)" autocomplete="off">
+          </div>
+        </div>
         <div class="pyk-confirm-row">
           <button class="btn-pyk-confirm" id="btnPykConfirm" disabled>Confirmar y habilitar escaneo</button>
         </div>
@@ -2474,7 +2486,8 @@
   // click, o marca dos veces por error, la segunda escritura ACTUALIZA el mismo
   // documento en vez de crear uno duplicado. ATTENDANCE_LOG (el array local) se
   // actualiza solo, en cuanto llega la confirmación por onSnapshot.
-  async function logAttendance(persona, rutina, cd, status, time, turno){
+  async function logAttendance(persona, rutina, cd, status, time, turno, extra){
+    extra = extra || {};
     const fecha = new Date().toISOString().slice(0, 10);
     if (!rutinaAplicaHoy(rutina, fecha)) return;
     const idDet = `${cd}_${rutina}_${fecha}_${persona.id}`;
@@ -2513,6 +2526,11 @@
         // Quién (usuario de la app) cargó esta marca; null en registros
         // anteriores a que se empezara a guardar este dato.
         cargadoPor: (currentUser && currentUser.name) || null,
+        // Entrenamiento declarado en el wizard (nombre) y, si este registro es el "doble"
+        // de otra rutina escaneada en el mismo momento, conjunta:true + la rutina principal.
+        entrenamiento: extra.entrenamiento || null,
+        conjunta: !!extra.conjunta,
+        principal: extra.principal || null,
       });
     } catch (e) {
       console.error('No se pudo registrar la asistencia en Firestore:', e);
@@ -6160,12 +6178,30 @@
   // Agrega las marcas (ATTENDANCE_LOG) de las fechas que cumplan `pred`.
   // Cada marca cuenta UNA vez en su líder (o en "Sin líder registrado"), así
   // que la suma por líder siempre debe igualar el total de registros.
+  // Marcas de uso para la vista diaria: lo que se escaneó junto (misma persona, mismo día,
+  // mismo líder y misma hora: p. ej. Matinal Metro + Entrenamiento UC) cuenta UNA sola vez,
+  // con la rutina principal (la que no es entrenamiento). Así el conteo no se infla.
+  function marcasDeUsoDiario(pred){
+    const grupos = new Map();
+    ATTENDANCE_LOG.forEach(a => {
+      if (a.cd !== selectedCD || !pred(a.fecha)) return;
+      const k = String(a.personId) + '|' + a.fecha + '|' + (a.cargadoPor || '') + '|' + (a.time || '');
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(a);
+    });
+    return [...grupos.values()].map(arr => {
+      const esEntren = (x) => String(x.rutina).startsWith('Entrenamiento');
+      const prim = arr.find(x => !esEntren(x)) || arr[0];
+      const conEntren = arr.some(x => x !== prim && esEntren(x)) || (!esEntren(prim) && !!prim.entrenamiento);
+      return { ...prim, conEntrenamiento: conEntren };
+    });
+  }
+
   function agregarUsoPorFechas(pred){
     const lideres = new Map();
     const personas = new Set();
     let registros = 0, uc = 0, ol = 0, otras = 0;
-    ATTENDANCE_LOG.forEach(a => {
-      if (a.cd !== selectedCD || !pred(a.fecha)) return;
+    marcasDeUsoDiario(pred).forEach(a => {
       registros++; personas.add(String(a.personId));
       const g = grupoDeRutina(a.rutina);
       if (g === 'UC') uc++; else if (g === 'OL') ol++; else otras++;
@@ -6175,6 +6211,7 @@
       L.marcas++;
       if (g === 'UC') L.uc++; else if (g === 'OL') L.ol++; else L.otras++;
       L.rutinas.set(a.rutina, (L.rutinas.get(a.rutina) || 0) + 1);
+      if (a.conEntrenamiento) L.rutinas.set('Con entrenamiento', (L.rutinas.get('Con entrenamiento') || 0) + 1);
     });
     return { registros, personas: personas.size, uc, ol, otras, lideres: [...lideres.values()].sort((x, y) => y.marcas - x.marcas) };
   }
@@ -6191,8 +6228,7 @@
 
     // Resumen por día del mes visible
     const porDia = new Map();
-    ATTENDANCE_LOG.forEach(a => {
-      if (a.cd !== selectedCD || !a.fecha.startsWith(CAL.mes)) return;
+    marcasDeUsoDiario((f) => f.startsWith(CAL.mes)).forEach(a => {
       if (!porDia.has(a.fecha)) porDia.set(a.fecha, { marcas: 0, uc: 0, ol: 0, lideres: new Set(), sinLider: 0 });
       const d = porDia.get(a.fecha);
       d.marcas++;
@@ -6313,12 +6349,11 @@
     const csv = document.getElementById('btnCalCsv');
     if (csv) csv.addEventListener('click', () => {
       const filas = [];
-      ATTENDANCE_LOG.forEach(a => {
-        if (a.cd !== selectedCD || !pred(a.fecha)) return;
-        filas.push([a.fecha, a.cargadoPor || 'Sin líder registrado', a.rutina, grupoDeRutina(a.rutina), a.personId, a.nombre || '', a.time || '']);
+      marcasDeUsoDiario(pred).forEach(a => {
+        filas.push([a.fecha, a.cargadoPor || 'Sin líder registrado', a.rutina, grupoDeRutina(a.rutina), a.personId, a.nombre || '', a.time || '', a.conEntrenamiento ? (a.entrenamiento || 'Sí') : '']);
       });
       filas.sort((x, y) => x[0].localeCompare(y[0]) || x[1].localeCompare(y[1]));
-      downloadCsv('uso_rutinas.csv', toCsv(['Fecha', 'Lider', 'Rutina', 'Grupo', 'Cedula', 'Nombre', 'Hora'], filas));
+      downloadCsv('uso_rutinas.csv', toCsv(['Fecha', 'Lider', 'Rutina', 'Grupo', 'Cedula', 'Nombre', 'Hora', 'Entrenamiento'], filas));
     });
   }
 
@@ -7013,36 +7048,26 @@
   // se agrupa en 2 categorías (1. Cambio de Turno → turno A/B/C, 2. Entrenamiento/otra
   // rutina → nombre) y el botón de escaneo permanece deshabilitado hasta que el
   // supervisor confirma explícitamente su elección con "Confirmar y habilitar escaneo".
-  let pykState = { categoria: null, rutina: null, turno: null, user: null };
+  let pykState = { categoria: null, rutina: null, turno: null, user: null, entrena: null, entrenaNombre: '' };
 
   function pykCategoriasPara(user){
-    // Categoría "Cambio de turno" (si el usuario tiene esa rutina asignada) se
-    // muestra aparte porque requiere elegir turno A/B/C. El resto de rutinas del
-    // usuario (Entrenamiento OL, Matinal, Diaria Logística, etc.) van juntas bajo
-    // "Entrenamiento / otra rutina", cada una como sub-opción por nombre.
-    // Guarda defensiva: si en el futuro alguna ruta de entrada llama esto con un
-    // usuario sin rutinas asignadas, se devuelve un wizard vacío en vez de lanzar
-    // un TypeError (hoy no ocurre: los botones "Marcar mis rutinas" ya validan
-    // user.rutinas.length antes de llegar aquí, pero es defensa en profundidad).
-    const rutinasUsuario = user.rutinas || [];
+    // 1. Cambio de turno → Turno A/B/C → ¿entrenamiento? (si hay: se guarda también como Entrenamiento OL)
+    // 2. Matinal UC → Matinal Poblaciones / Matinal Metro → ¿entrenamiento? (también como Entrenamiento UC)
+    // 3. Otras rutinas (p. ej. Diaria Logística), sin pregunta de entrenamiento.
+    // Guarda defensiva: un usuario sin rutinas devuelve un wizard vacío en vez de lanzar un TypeError.
+    const r = user.rutinas || [];
     const cats = [];
-    if (rutinasUsuario.includes('Cambio de turno')){
-      cats.push({ id: 'turno', nombre: 'Cambio de Turno', rutina: 'Cambio de turno', usaTurnos: !!user.usaTurnos });
-    }
-    const ordenUC = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC'];
-    const otras = rutinasUsuario.filter(r => r !== 'Cambio de turno')
-      .sort((a, b) => (ordenUC.indexOf(a) === -1 ? 99 : ordenUC.indexOf(a)) - (ordenUC.indexOf(b) === -1 ? 99 : ordenUC.indexOf(b)));
-    if (otras.length){
-      // Perfiles UC (solo matinales / entrenamiento UC) ven la opción 2 como
-      // "Matinales UC"; si también tienen otras rutinas se deja el nombre general.
-      const soloUC = otras.every(r => ordenUC.includes(r));
-      cats.push({ id: 'entrenamiento', nombre: soloUC ? 'Matinales UC' : 'Entrenamiento', opciones: otras, soloUC });
-    }
+    if (r.includes('Cambio de turno')) cats.push({ id: 'turno', nombre: 'Cambio de Turno', rutina: 'Cambio de turno', pregEntren: 'Entrenamiento OL' });
+    const matinales = ['Matinal Poblaciones', 'Matinal Metro'].filter(x => r.includes(x));
+    if (matinales.length) cats.push({ id: 'matinalUC', nombre: 'Matinal UC', opciones: matinales, pregEntren: 'Entrenamiento UC' });
+    const resto = r.filter(x => x !== 'Cambio de turno' && !x.startsWith('Matinal ')
+      && !(x === 'Entrenamiento UC' && matinales.length) && !(x === 'Entrenamiento OL' && r.includes('Cambio de turno')));
+    if (resto.length) cats.push({ id: 'otras', nombre: resto.length === 1 ? resto[0] : 'Otras rutinas', opciones: resto });
     return cats;
   }
 
   function pykRender(user){
-    pykState = { categoria: null, rutina: null, turno: null, user };
+    pykState = { categoria: null, rutina: null, turno: null, user, entrena: null, entrenaNombre: '' };
     // Limpia la rutina/turno activos mientras el wizard está pendiente de una nueva
     // confirmación (al entrar por primera vez o tras "Cambiar selección"), para que
     // el panel "Ya registrados hoy" y las estadísticas no sigan mostrando datos de
@@ -7054,6 +7079,7 @@
     document.getElementById('btnScanQr').disabled = true;
     document.getElementById('pykSubStep').hidden = true;
     document.getElementById('pykSubRow').innerHTML = '';
+    pykReiniciarPaso3();
     document.getElementById('btnPykConfirm').disabled = true;
     updateLeaderStats(user.cd);
     refrescarFotoBar();
@@ -7075,10 +7101,32 @@
     if (cats.length === 1) pykElegirCategoria(cats[0], catRow.firstElementChild);
   }
 
+  function pykReiniciarPaso3(){
+    pykState.entrena = null; pykState.entrenaNombre = '';
+    document.getElementById('pykTrainStep').hidden = true;
+    document.getElementById('pykTrainNameWrap').hidden = true;
+    document.getElementById('pykTrainName').value = '';
+    document.querySelectorAll('#pykTrainRow .pyk-sub-btn').forEach(b => b.classList.remove('active'));
+  }
+
+  // Muestra la pregunta del entrenamiento (paso 3) cuando la categoría la tiene y ya se
+  // eligió la opción del paso 2; habilita "Confirmar" solo si todo está respondido.
+  function pykActualizarPaso3(){
+    const cat = pykState.categoria;
+    const trainStep = document.getElementById('pykTrainStep');
+    const pregunta = !!(cat && cat.pregEntren && pykState.rutina);
+    trainStep.hidden = !pregunta;
+    if (!pregunta) pykState.entrena = null;
+    const nombreOk = (pykState.entrenaNombre || '').trim().length >= 3;
+    document.getElementById('btnPykConfirm').disabled = !pykState.rutina
+      || (pregunta && !(pykState.entrena === false || (pykState.entrena === true && nombreOk)));
+  }
+
   function pykElegirCategoria(cat, btnEl){
     pykState.categoria = cat;
     pykState.rutina = null;
     pykState.turno = null;
+    pykReiniciarPaso3();
     document.querySelectorAll('#pykCatRow .pyk-cat-btn').forEach(b => b.classList.toggle('active', b === btnEl));
 
     const subStep = document.getElementById('pykSubStep');
@@ -7086,60 +7134,53 @@
     const subLabel = document.getElementById('pykSubLabel');
     subRow.innerHTML = '';
     document.getElementById('btnPykConfirm').disabled = true;
+    subStep.hidden = false;
 
-    if (cat.id === 'turno' && cat.usaTurnos){
-      subStep.hidden = false;
-      subLabel.textContent = '2. Elige el turno de esta semana';
-      ['A', 'B', 'C'].forEach(t => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'pyk-sub-btn';
-        btn.textContent = 'Turno ' + t;
-        btn.addEventListener('click', () => {
-          pykState.rutina = cat.rutina;
-          pykState.turno = t;
-          document.querySelectorAll('#pykSubRow .pyk-sub-btn').forEach(b => b.classList.toggle('active', b === btn));
-          document.getElementById('btnPykConfirm').disabled = false;
-        });
-        subRow.appendChild(btn);
+    const opciones = cat.id === 'turno'
+      ? ['A', 'B', 'C'].map(t => ({ texto: 'Turno ' + t, rutina: cat.rutina, turno: t }))
+      : cat.opciones.map(r => ({ texto: r, rutina: r, turno: null }));
+    subLabel.textContent = cat.id === 'turno' ? '2. Elige el turno' : cat.id === 'matinalUC' ? '2. Elige la matinal' : '2. Elige la rutina';
+    opciones.forEach(op => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pyk-sub-btn';
+      btn.textContent = op.texto;
+      btn.addEventListener('click', () => {
+        pykState.rutina = op.rutina;
+        pykState.turno = op.turno;
+        document.querySelectorAll('#pykSubRow .pyk-sub-btn').forEach(b => b.classList.toggle('active', b === btn));
+        pykActualizarPaso3();
       });
-    } else if (cat.id === 'turno'){
-      // Rutina de "Cambio de turno" pero el usuario no maneja turnos rotativos:
-      // se confirma directo, sin paso de sub-selección.
-      subStep.hidden = true;
-      pykState.rutina = cat.rutina;
-      pykState.turno = null;
-      document.getElementById('btnPykConfirm').disabled = false;
-    } else {
-      subStep.hidden = false;
-      subLabel.textContent = cat.soloUC ? '2. Elige la matinal / entrenamiento UC' : '2. Elige el entrenamiento / rutina';
-      cat.opciones.forEach(r => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'pyk-sub-btn';
-        btn.textContent = r;
-        btn.addEventListener('click', () => {
-          pykState.rutina = r;
-          pykState.turno = null;
-          document.querySelectorAll('#pykSubRow .pyk-sub-btn').forEach(b => b.classList.toggle('active', b === btn));
-          document.getElementById('btnPykConfirm').disabled = false;
-        });
-        subRow.appendChild(btn);
-      });
-      // Una sola opción de entrenamiento: se preselecciona igual que las categorías,
-      // pero sigue exigiendo el clic en "Confirmar" para habilitar el escaneo.
-      if (cat.opciones.length === 1) subRow.firstElementChild.click();
-    }
+      subRow.appendChild(btn);
+    });
+    // Una sola opción: se preselecciona (sigue exigiendo el clic en "Confirmar").
+    if (opciones.length === 1) subRow.firstElementChild.click();
   }
+
+  document.querySelectorAll('#pykTrainRow [data-train]').forEach(b => b.addEventListener('click', () => {
+    pykState.entrena = b.dataset.train === 'si';
+    document.querySelectorAll('#pykTrainRow .pyk-sub-btn').forEach(x => x.classList.toggle('active', x === b));
+    const wrap = document.getElementById('pykTrainNameWrap');
+    wrap.hidden = !pykState.entrena;
+    if (pykState.entrena) document.getElementById('pykTrainName').focus();
+    pykActualizarPaso3();
+  }));
+  document.getElementById('pykTrainName').addEventListener('input', (e) => {
+    pykState.entrenaNombre = e.target.value;
+    pykActualizarPaso3();
+  });
 
   function pykConfirmar(){
     if (!pykState.rutina || !pykState.user) return;
     const user = pykState.user;
-    selectLeaderRutina(pykState.rutina, user, pykState.turno);
+    const entren = pykState.entrena && pykState.categoria && pykState.categoria.pregEntren
+      ? { rutina: pykState.categoria.pregEntren, nombre: pykState.entrenaNombre.trim() } : null;
+    selectLeaderRutina(pykState.rutina, user, pykState.turno, entren);
 
     const wizard = document.getElementById('pykWizard');
     wizard.classList.add('pyk-done');
-    const resumen = pykState.turno ? `${pykState.rutina} · Turno ${pykState.turno}` : pykState.rutina;
+    let resumen = pykState.turno ? `${pykState.rutina} · Turno ${pykState.turno}` : pykState.rutina;
+    if (entren) resumen += ` + Entrenamiento: ${entren.nombre}`;
     document.getElementById('pykSummaryText').textContent = resumen;
     document.getElementById('btnScanQr').disabled = false;
     document.getElementById('btnScanQr').title = '';
@@ -7256,59 +7297,40 @@
   // documento de asistencia por rutina marcada, con la hora/estado de ESA rutina.
   const RUTINAS_UC_CONTABLES = ['Matinal Poblaciones', 'Matinal Metro', 'Entrenamiento UC'];
 
-  function renderExtraRutinasChecks(rutina){
+  // Ya no hay casillas "que cuente también como…": el entrenamiento se declara en el
+  // paso 3 del wizard. Se conserva la función (oculta el recuadro viejo).
+  function renderExtraRutinasChecks(){
     const box = document.getElementById('extraRutinasBox');
-    const cont = document.getElementById('extraRutinasChecks');
-    if (!box || !cont) return;
-    if (!RUTINAS_UC_CONTABLES.includes(rutina)){ box.hidden = true; cont.innerHTML = ''; return; }
-    box.hidden = false;
-    cont.innerHTML = '';
-    RUTINAS_UC_CONTABLES.filter(r => r !== rutina).forEach(r => {
-      const label = document.createElement('label');
-      label.className = 'check-chip';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.addEventListener('change', () => {
-        label.classList.toggle('checked', cb.checked);
-        if (cb.checked){
-          if (!leaderState.extras.includes(r)) leaderState.extras.push(r);
-          // Lo ya escaneado en esta sesión también pasa a la rutina recién marcada.
-          Object.entries(leaderState.marks).forEach(([personId, m]) => {
-            const persona = PEOPLE.find(p => p.id === personId);
-            if (persona) registrarMarcaExtra(persona, r, m.time);
-          });
-        } else {
-          leaderState.extras = leaderState.extras.filter(x => x !== r);
-        }
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(r));
-      cont.appendChild(label);
-    });
+    if (box) box.hidden = true;
   }
 
   function registrarMarcaExtra(persona, rutinaExtra, time){
-    logAttendance(persona, rutinaExtra, currentUser.cd, calcularStatusPorHora(rutinaExtra), time, null);
+    logAttendance(persona, rutinaExtra, currentUser.cd, calcularStatusPorHora(rutinaExtra), time, leaderState.usaTurnos ? leaderState.turno : null,
+      { entrenamiento: leaderState.entrenamiento, conjunta: true, principal: leaderState.rutina });
   }
 
-  function selectLeaderRutina(rutina, user, turnoElegido){
+  function selectLeaderRutina(rutina, user, turnoElegido, entrenamiento){
     if (typeof cerrarEscanerQr === 'function') cerrarEscanerQr(); // evita escanear para la rutina anterior
     leaderState.rutina = rutina;
     leaderState.marks = {};
-    leaderState.extras = [];
+    // Entrenamiento declarado en el wizard: cada escaneo guarda además un registro de esa
+    // rutina de entrenamiento (con el nombre), enlazado a la rutina principal. En la vista
+    // diaria (Calendario de uso) las dos marcas cuentan UNA sola vez.
+    leaderState.extras = entrenamiento ? [entrenamiento.rutina] : [];
+    leaderState.entrenamiento = entrenamiento ? entrenamiento.nombre : null;
     renderExtraRutinasChecks(rutina);
     // Los turnos rotativos A/B/C solo aplican a "Cambio de turno". El turno ya no se
     // calcula por defecto aquí: viene de la elección explícita hecha en el wizard
     // poka-yoke (pykConfirmar), que es obligatoria antes de poder escanear.
-    leaderState.usaTurnos = !!user.usaTurnos && rutina === 'Cambio de turno';
-    leaderState.turno = leaderState.usaTurnos ? (turnoElegido || 'A') : null;
+    leaderState.usaTurnos = rutina === 'Cambio de turno' && !!turnoElegido;
+    leaderState.turno = leaderState.usaTurnos ? turnoElegido : null;
     const info = RUTINA_INFO[rutina] || {};
     const hoy = new Date().toISOString().slice(0, 10);
     const esFinDeSemanaBloqueado = !rutinaAplicaHoy(rutina, hoy);
     document.getElementById('sessionTitle').textContent = rutina;
     document.getElementById('sessionMeta').textContent = esFinDeSemanaBloqueado
       ? `Esta rutina es de lunes a viernes. Hoy es fin de semana: lo que marques aquí no quedará registrado en Adherencia.`
-      : `Horario: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''} · Ventana de llegada a tiempo: ${info.ventana || 15} min`;
+      : `Horario: ${info.hora || '—'}${info.horaFin ? ' a ' + info.horaFin : ''} · Ventana de llegada a tiempo: ${info.ventana || 15} min${entrenamiento ? ' · Entrenamiento: ' + entrenamiento.nombre : ''}`;
 
     logDesignations(rutina, user.cd, designadosParaVistaRutina(rutina, user.cd, hoy));
     renderLeaderTable(user.cd, '');
@@ -7702,7 +7724,7 @@
     const now = new Date();
     const time = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
     leaderState.marks[persona.id] = { status, time };
-    logAttendance(persona, leaderState.rutina, currentUser.cd, status, time, leaderState.turno);
+    logAttendance(persona, leaderState.rutina, currentUser.cd, status, time, leaderState.turno, { entrenamiento: leaderState.entrenamiento });
     (leaderState.extras || []).forEach(r => registrarMarcaExtra(persona, r, time));
     updateLeaderStats(currentUser.cd);
     mostrarChulitoEscaneo();

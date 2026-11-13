@@ -967,6 +967,47 @@
   .var-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; font-size:12px; color:var(--text-dim);}
   .var-legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle;}
   .var-kpi{margin-top:6px; font-size:13px; color:var(--text-dim);}
+  /* ---- Campana de notificaciones (perfil maestro) ---- */
+  .bell-wrap{position:relative;}
+  .bell-btn{position:relative;}
+  .bell-badge{position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; line-height:1;}
+  .bell-panel{position:absolute; right:0; top:calc(100% + 8px); width:min(360px, 92vw); max-height:70vh; overflow:auto; background:var(--surface); border:1.5px solid var(--border); border-radius:14px; box-shadow:0 12px 32px rgba(10,30,70,.18); z-index:60; padding:6px;}
+  .bell-panel h6{margin:8px 10px 4px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-faint);}
+  .bell-item{display:block; width:100%; text-align:left; background:transparent; border:0; border-radius:10px; padding:10px; cursor:pointer; color:var(--text); font:inherit; transition:background .15s;}
+  @media (hover:hover){ .bell-item:hover{background:var(--surface-2);} }
+  .bell-item:active{background:var(--surface-2);}
+  .bell-item b{display:flex; align-items:center; gap:8px; font-size:13px;}
+  .bell-item b i{width:9px; height:9px; border-radius:50%; background:var(--mid); flex:none;}
+  .bell-item.alta b i{background:var(--bad);}
+  .bell-item span{display:block; margin-top:3px; font-size:12px; color:var(--text-dim); line-height:1.35;}
+  .bell-vacio{padding:16px 12px; font-size:13px; color:var(--text-dim);}
+  /* ---- Cargues (People / Torre de Control) ---- */
+  .cargue-card{margin-bottom:16px;}
+  #screenAdmin[data-cargue="people"] .cargue-card:not([data-for~="people"]),
+  #screenAdmin[data-cargue="torre"] .cargue-card:not([data-for~="torre"]),
+  #screenAdmin[data-cargue="reparto"] .cargue-card:not([data-for~="reparto"]){display:none;}
+  #screenAdmin[data-cargue] .adh-subnav-host{display:none;}
+  .cg-days{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0;}
+  .cg-day{border:1.5px solid var(--border); border-radius:12px; padding:6px 10px; font-size:12px; background:var(--surface-2); line-height:1.3;}
+  .cg-day b{display:block; font-size:12px;}
+  .cg-day.ok{border-color:var(--ok);} .cg-day.ok em{color:var(--ok);}
+  .cg-day.no{border-color:var(--bad);} .cg-day.no em{color:var(--bad);}
+  .cg-day.pend em{color:var(--text-faint);}
+  .cg-day em{font-style:normal; font-weight:700;}
+  .nv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:10px 0;}
+  .nv-grid label{display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-faint);}
+  .nv-grid input,.nv-grid select{background:var(--surface-2); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font:inherit; font-size:13px;}
+  .nv-quien{font-size:12px; color:var(--text-dim); min-height:16px;}
+  .nv-prev{margin-top:10px; border:1.5px solid var(--border); border-radius:12px; overflow:hidden;}
+  .nv-prev table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .nv-prev th,.nv-prev td{padding:6px 10px; text-align:left; border-bottom:1px solid var(--border);}
+  .nv-prev td.bad{color:var(--bad); font-weight:600;} .nv-prev td.ok{color:var(--ok); font-weight:600;}
+  .nv-lista{margin-top:8px; font-size:12.5px;}
+  .nv-lista .fila{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);}
+  .nv-lista .fila > div{flex:1; min-width:0;}
+  .nv-lista .fila small{display:block; color:var(--text-faint);}
+  .nv-lista .fila button{flex:none;}
+  .nv-sub{margin:16px 0 4px; font-size:13px; font-weight:700;}
   .adhr-minibar{display:inline-block; width:60px; height:7px; border-radius:4px; background:var(--surface-2); vertical-align:middle; margin-right:6px; overflow:hidden;}
   .adhr-minibar i{display:block; height:100%; background:var(--ok);}
 
@@ -1239,6 +1280,13 @@
         <div class="av" id="adminAvatar">DP</div>
         <div><b id="adminName">Daniel Padilla</b><span>Usuario maestro</span></div>
       </div>
+      <div class="bell-wrap" id="bellWrap" hidden>
+        <button class="btn-icon bell-btn" id="bellBtn" title="Notificaciones" aria-label="Notificaciones">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-badge" id="bellBadge" hidden>0</span>
+        </button>
+        <div class="bell-panel" id="bellPanel" hidden></div>
+      </div>
       <button class="btn-icon" id="btnAdminMisRutinas" title="Marcar mis rutinas" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
@@ -1257,6 +1305,8 @@
     <button class="admin-tab" data-tab="tabTurnos">Turnos rotativos A/B/C</button>
     <button class="admin-tab" data-tab="adhHub" data-report-visible="1">Adherencia</button>
     <button class="admin-tab" data-tab="tabEncuestas" data-report-visible="1">Encuestas ABI</button>
+    <button class="admin-tab" data-tab="tabCargues" data-cargue="people torre">Cargues</button>
+    <button class="admin-tab" data-tab="tabAsignacionNominas" data-cargue="reparto" data-cargue-only="1">Asignación NOMINAS</button>
   </div>
 
   <div class="admin-body">
@@ -1532,23 +1582,7 @@
       <div class="fbar-host"></div>
       <p class="adh-note">Por cada colaborador se evalúa, día por día, si asistió a <b>al menos una</b> de sus rutinas posibles (según su Grupo) — no si fue a todas. Solo cuentan los días en que realmente hubo una rutina operando para su grupo (si un día no hubo ninguna rutina abierta, ese día no cuenta ni suma ni corta la racha). Los colaboradores de <b>UC</b> solo aparecen aquí si siguen asignados a Población o Metro en la última carga de NOMINAS (coherente con "Adherencia real por ruta"); OL y ABI no se filtran por esto. <b>Racha actual</b> = días operativos seguidos, contando desde el más reciente, sin ninguna asistencia — un día con <b>Descanso Efectivo</b> ni suma ni corta esta racha (se salta). <b>Verde</b> = 0 · <b>Amarillo</b> = 1 · <b>Naranja</b> = 2 · <b>Rojo</b> = 3 o más días seguidos sin asistir a nada — alerta. <b>Racha cumpliendo</b> = lo contrario: días seguidos, contando desde el más reciente, en los que SÍ cumplió — aquí un día con Descanso Efectivo <b>sí cuenta</b> como día cumplido. Al llegar a 10, 20 o 30 días seguidos cumpliendo, la persona recibe una insignia 🥉🥈🥇.</p>
 
-      <div class="descanso-card">
-        <div class="descanso-card-head">
-          <div>
-            <div class="descanso-card-title">Cargar Descanso Efectivo del día</div>
-            <div class="descanso-card-sub">Sube el Excel "PLANTILLA DESCANSO EFECTIVO" tal como lo descargas — se lee en el navegador, nada se sube a ningún servidor externo.</div>
-          </div>
-        </div>
-        <div class="descanso-card-row">
-          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha a la que aplica
-            <input type="date" id="descansoFecha" style="width:130px;">
-          </label>
-          <input type="file" id="descansoFileInput" accept=".xlsx,.xls" style="display:none;">
-          <button class="btn-secondary" id="btnDescansoElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
-          <span id="descansoFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
-        </div>
-        <div id="descansoPreview"></div>
-      </div>
+      
 
       <div class="adh-filters">
         <select id="adhpRutina"><option value="">Todas las rutinas</option></select>
@@ -1682,6 +1716,91 @@
 
       <div class="section-head" style="margin-top:8px;"><div class="section-title" style="font-size:15px;">Versiones guardadas</div></div>
       <div id="nominasVersiones"></div>
+    </div>
+
+    <!-- =============== TAB: Cargues (People · Torre de Control) =============== -->
+    <div class="admin-tab-panel" id="tabCargues" hidden>
+      <div class="section-head"><div class="section-title">Cargues diarios</div></div>
+      <p class="adh-note">Cada área sube aquí su información para que el informe de adherencia sea confiable. <b>Descansos efectivos:</b> deben estar cargados antes de las <b>9:00 a. m.</b> del día (se pueden cargar desde el día anterior). <b>Incapacidades:</b> no hace falta cargar nada si no hay; se pueden registrar días después y el informe se recalcula.</p>
+
+      <div class="descanso-card cargue-card" data-for="people" id="cardPeople">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">People · novedades de personal</div>
+            <div class="descanso-card-sub">Altas (personal nuevo), bajas (retiro, renuncia o despido) e incapacidades, justificadas o no. Por Excel o una por una. Antes de guardar siempre ves una vista previa y las filas con error no se guardan.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row">
+          <button class="btn-secondary" id="btnNvPlantilla" style="flex:none; padding:8px 14px; font-size:12px;">⬇ Descargar plantilla Excel</button>
+          <input type="file" id="nvFileInput" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-secondary" id="btnNvElegir" style="flex:none; padding:8px 14px; font-size:12px;">Subir Excel de novedades…</button>
+          <span id="nvFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
+        </div>
+        <div class="nv-sub">O registra una sola novedad</div>
+        <div class="nv-grid">
+          <label>Tipo
+            <select id="nvTipo">
+              <option value="INCAPACIDAD">Incapacidad</option>
+              <option value="ALTA">Alta (personal nuevo)</option>
+              <option value="BAJA">Baja (retiro, renuncia o despido)</option>
+            </select></label>
+          <label>Cédula
+            <input id="nvCedula" list="nvCedulas" inputmode="numeric" autocomplete="off" placeholder="Escribe cédula o nombre">
+            <datalist id="nvCedulas"></datalist></label>
+          <label data-t="ALTA">Nombre <input id="nvNombre"></label>
+          <label data-t="ALTA">Cargo <input id="nvCargo" placeholder="Conductor, Auxiliar de reparto…"></label>
+          <label data-t="ALTA">Grupo
+            <select id="nvGrupo"><option>UC</option><option>OL</option><option>ABI</option></select></label>
+          <label data-t="ALTA">Zona (solo UC)
+            <select id="nvZona"><option value="Poblaciones">Población</option><option value="Metro">Metro</option></select></label>
+          <label><span id="nvDesdeLbl">Desde</span> <input type="date" id="nvDesde"></label>
+          <label data-t="INCAPACIDAD">Hasta (opcional) <input type="date" id="nvHasta"></label>
+          <label data-t="INCAPACIDAD" title="Justificada: no cuenta como falta. Injustificada: sí cuenta como falta.">¿Justificada?
+            <select id="nvJust"><option value="1">Justificada</option><option value="0">Injustificada</option></select></label>
+          <label data-t="BAJA INCAPACIDAD">Motivo <input id="nvMotivo" placeholder="Retiro, renuncia, despido…"></label>
+        </div>
+        <div class="nv-quien" id="nvQuien"></div>
+        <div class="descanso-card-row">
+          <button class="btn-add" id="btnNvRevisar" style="flex:none;">Revisar</button>
+        </div>
+        <div id="peoplePreview"></div>
+
+        <div class="nv-sub">Incapacidades registradas (más recientes)</div>
+        <div class="nv-lista" id="incLista"></div>
+        <div class="nv-sub">Altas y bajas de los últimos 30 días</div>
+        <div class="nv-lista" id="novedadesRecientes"></div>
+      </div>
+
+<div class="descanso-card cargue-card" data-for="torre" id="cardTorre">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Cargar Descanso Efectivo del día</div>
+            <div class="descanso-card-sub">Sube el Excel "PLANTILLA DESCANSO EFECTIVO" tal como lo descargas. Debe quedar cargado antes de las 9:00 a. m. del día y se puede cargar desde el día anterior. Si ese día nadie tiene descanso efectivo, no es necesario cargar nada, pero el día queda marcado como "no cargado". Se lee en el navegador, nada se sube a ningún servidor externo.</div>
+          </div>
+        </div>
+        <div id="estadoDescansos"></div>
+        <div class="descanso-card-row">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Fecha a la que aplica
+            <input type="date" id="descansoFecha" style="width:130px;">
+          </label>
+          <button class="btn-secondary" data-dias="0" style="flex:none; padding:6px 10px; font-size:12px;">Hoy</button>
+          <button class="btn-secondary" data-dias="1" style="flex:none; padding:6px 10px; font-size:12px;">Mañana</button>
+          <input type="file" id="descansoFileInput" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-secondary" id="btnDescansoElegirArchivo" style="flex:none; padding:8px 14px; font-size:12px;">Elegir archivo…</button>
+          <span id="descansoFileName" style="font-size:12px; color:var(--text-faint);">Ningún archivo elegido.</span>
+        </div>
+        <div id="descansoPreview"></div>
+      </div>
+
+      <div class="descanso-card cargue-card" data-for="reparto" id="cardReparto">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Reparto · asignación por rutina (NOMINAS)</div>
+            <div class="descanso-card-sub">Es opcional y no excluyente: si no se actualiza, sigue vigente la última versión cargada. Se carga en la pestaña <b>Adherencia → Asignación NOMINAS</b>.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row"><button class="btn-secondary" id="btnIrNominas" style="flex:none; padding:8px 14px; font-size:12px;">Ir a Asignación NOMINAS</button></div>
+      </div>
     </div>
 
     <!-- =============== TAB: Calendario de uso =============== -->
@@ -2003,6 +2122,8 @@
   const DESIGNATION_LOG = [];
   const ABI_SURVEYS = [];
   const DESCANSO_EFECTIVO_LOG = []; // { cd, fecha, personId } — ver "Adherencia por persona"
+  const INCAPACIDADES_LOG = []; // { cd, fecha, personId, nombre, justificada, motivo, registradoPor, registradoEn }
+  const DESCANSO_CARGAS = new Map(); // fecha -> { cargadoPor, cargadoEn, n }: Torre de Control cargó ese día (aunque no haya excusas)
   // Cada elemento = una versión completa subida ("carga"), NO una persona:
   // { cd, vigenciaDesde, creadoEn, personas:[{personId,nombre,zona,rol}] } —
   // ver "Asignación real por ruta" y asignacionVigenteEnFecha().
@@ -2090,8 +2211,13 @@
 
     const qDescansoEfectivo = query(colDescansoEfectivo, where('cd', '==', selectedCD));
     unsubDescansoEfectivo = onSnapshot(qDescansoEfectivo, (snap) => {
-      DESCANSO_EFECTIVO_LOG.length = 0;
-      snap.docs.forEach(d => DESCANSO_EFECTIVO_LOG.push(d.data()));
+      DESCANSO_EFECTIVO_LOG.length = 0; INCAPACIDADES_LOG.length = 0; DESCANSO_CARGAS.clear();
+      snap.docs.forEach(d => {
+        const x = d.data();
+        if (x.tipo === 'carga') DESCANSO_CARGAS.set(x.fecha, x);
+        else if (x.tipo === 'incapacidad') INCAPACIDADES_LOG.push(x);
+        else DESCANSO_EFECTIVO_LOG.push(x);
+      });
       liveRefreshCallbacks.asistencias.forEach(fn => { try { fn(); } catch(e){} });
     }, (err) => console.error('Error escuchando descanso efectivo:', err));
 
@@ -2655,7 +2781,7 @@
       // iniciarSuscripcionesPesadas más arriba.
       iniciarSuscripcionesPesadas();
 
-      if (found.admin || found.reportOnly) {
+      if (found.admin || found.reportOnly || found.cargue) {
         document.getElementById('adminName').textContent = found.name;
         document.getElementById('adminAvatar').textContent = found.initials;
         document.getElementById('adminCdTag').textContent = 'CD ' + selectedCD;
@@ -2796,7 +2922,8 @@
     if (enGrupo) subAdhActual = tabId;
     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.admin-tab-panel').forEach(p => p.hidden = true);
-    const btn = document.querySelector(`.admin-tab[data-tab="${enGrupo ? 'adhHub' : tabId}"]`);
+    const modoCargue = !!screenAdmin.dataset.cargue;
+    const btn = document.querySelector(`.admin-tab[data-tab="${enGrupo && !modoCargue ? 'adhHub' : tabId}"]`);
     if (btn) btn.classList.add('active');
     const panel = document.getElementById(tabId);
     if (panel) panel.hidden = false;
@@ -2811,6 +2938,7 @@
     if (tabId === 'tabCalendarioUso') renderCalendarioUso();
     if (tabId === 'tabAsignacionNominas'){ setupAsignacionRutaUI(); renderAsignacionVersiones(); }
     if (tabId === 'tabEncuestas') renderEncuestasAdmin();
+    if (tabId === 'tabCargues') renderCargues();
   }
 
   function renderAsignacionVersiones(){
@@ -2871,11 +2999,20 @@
     // sin acceso a editar nada (Colaboradores, Usuarios, Turnos, Rutinas, Marcar asistencia
     // quedan ocultos). Se aplica cada vez que este usuario entra, por si el admin normal
     // dejó el panel en otra pestaña en un login anterior.
+    const cargue = (currentUser && !currentUser.admin && !currentUser.reportOnly && currentUser.cargue) || '';
+    if (cargue) screenAdmin.dataset.cargue = cargue; else delete screenAdmin.dataset.cargue;
+    setupCampana(); actualizarCampana();
     document.querySelectorAll('.admin-tab').forEach(tab => {
-      tab.hidden = !!reportOnly && !tab.dataset.reportVisible;
+      const cv = (tab.dataset.cargue || '').split(' ').filter(Boolean);
+      tab.hidden = cargue ? !cv.includes(cargue) : (reportOnly ? !tab.dataset.reportVisible : !!tab.dataset.cargueOnly);
     });
-    document.getElementById('adminName').nextElementSibling.textContent = reportOnly ? 'Visor de reportes' : 'Usuario maestro';
+    const ROL_CARGUE = { people: 'Perfil People', torre: 'Perfil Torre de Control', reparto: 'Perfil Reparto' };
+    document.getElementById('adminName').nextElementSibling.textContent = cargue ? ROL_CARGUE[cargue] : (reportOnly ? 'Visor de reportes' : 'Usuario maestro');
 
+    if (cargue){
+      activarTabAdmin(cargue === 'reparto' ? 'tabAsignacionNominas' : 'tabCargues');
+      return;
+    }
     if (reportOnly){
       activarTabAdmin('tabAdherenciaRuta');
       return;
@@ -3236,7 +3373,7 @@
         <td>${username}</td>
         <td>${u.role}</td>
         <td>${(!u.cd || u.cd === 'Ambos') ? '<span class="pill gold">Ambos CDs</span>' : `<span class="pill">${u.cd === 'Villavicencio' ? 'VVC' : 'YOP'}</span>`}</td>
-        <td>${u.admin ? '<span class="pill gold">Todas</span>' : (u.abiAuditor ? '<span class="pill gold">Cualquiera (ABI)</span>' : (u.rutinas||[]).map(r => `<span class="rutina-chip">${r}</span>`).join('')) }${u.tambienAbi ? ' <span class="rutina-chip" style="border-color:var(--gold); color:var(--gold);">+ Encuesta ABI</span>' : ''}</td>
+        <td>${u.cargue ? `<span class="pill gold">Cargue: ${{ people: 'People', torre: 'Torre de Control', reparto: 'Reparto' }[u.cargue] || u.cargue}</span> ` : ''}${u.admin ? '<span class="pill gold">Todas</span>' : (u.abiAuditor ? '<span class="pill gold">Cualquiera (ABI)</span>' : (u.rutinas||[]).map(r => `<span class="rutina-chip">${r}</span>`).join('')) }${u.tambienAbi ? ' <span class="rutina-chip" style="border-color:var(--gold); color:var(--gold);">+ Encuesta ABI</span>' : ''}</td>
         <td><span class="pass-mono">${u.pass}</span></td>
         <td>
           <div class="row-actions">
@@ -3301,6 +3438,15 @@
           <input type="checkbox" id="uIsReportOnly" ${isReportOnly ? 'checked' : ''}> Es visor de reportes (solo ve Adherencia, Adherencia por persona y Encuestas ABI — puede descargar, no puede editar nada)
         </label>
       </div>
+      <div class="modal-field">
+        <label>Perfil de cargue (opcional — para que otra área suba su información)</label>
+        <select id="uCargue">
+          <option value="">Ninguno</option>
+          <option value="people" ${existing && existing.cargue === 'people' ? 'selected' : ''}>People: altas, bajas e incapacidades</option>
+          <option value="torre" ${existing && existing.cargue === 'torre' ? 'selected' : ''}>Torre de Control: descansos efectivos</option>
+          <option value="reparto" ${existing && existing.cargue === 'reparto' ? 'selected' : ''}>Reparto: asignación NOMINAS</option>
+        </select>
+      </div>
       <div class="modal-field" id="uRutinasWrap">
         <label>Rutinas habilitadas para marcar asistencia</label>
         <div class="checkbox-grid" id="uRutinas">
@@ -3340,8 +3486,9 @@
       const abi = document.getElementById('uIsAbi').checked;
       const reportOnly = document.getElementById('uIsReportOnly').checked;
       const rutinasSel = Array.from(box.querySelectorAll('#uRutinas input:checked')).map(i => i.value);
-      if (!admin && !abi && !reportOnly && rutinasSel.length === 0){
-        alert('Selecciona al menos una rutina habilitada (o marca "usuario maestro" / "auditor ABI" / "visor de reportes").');
+      const cargueSel = document.getElementById('uCargue').value;
+      if (!admin && !abi && !reportOnly && !cargueSel && rutinasSel.length === 0){
+        alert('Selecciona al menos una rutina habilitada (o marca "usuario maestro" / "auditor ABI" / "visor de reportes" / un perfil de cargue).');
         return;
       }
       const nameParts = name.trim().split(/\s+/);
@@ -3368,6 +3515,7 @@
       if (admin) payload.admin = true;
       if (abi) payload.abiAuditor = true;
       if (reportOnly) payload.reportOnly = true;
+      if (cargueSel) payload.cargue = cargueSel;
 
       const saveBtn = document.getElementById('uSave');
       saveBtn.disabled = true;
@@ -3854,11 +4002,479 @@
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
   }
 
+  // ================= Cargues diarios (People · Torre de Control) + campana =================
+  // Sin colecciones nuevas (las reglas de Firestore solo permiten las ya creadas):
+  //  - colección "descansoEfectivo": además de las excusas (docs sin "tipo"),
+  //    guarda docs tipo:'carga' (constancia de que Torre de Control cargó ese día,
+  //    aunque haya 0 excusas) y tipo:'incapacidad' (una por persona y día).
+  //  - colección "colaboradores": altas/bajas (activo, fechaBaja, motivoBaja).
+  //  - colección "asignacionesRuta": se reescriben versiones con la persona
+  //    agregada/retirada desde su fecha (ver aplicarCambiosAsignacion).
+  const HORA_LIMITE_CARGUE = 9; // hora de Bogotá antes de la cual deben estar cargados los descansos del día
+
+  // 'personId|fecha' -> origen de la excusa ("Descanso efectivo" | "Incapacidad justificada")
+  function mapaExcusas(){
+    const m = new Map();
+    DESCANSO_EFECTIVO_LOG.forEach(r => { if (r.cd === selectedCD) m.set(r.personId + '|' + r.fecha, 'Descanso efectivo'); });
+    INCAPACIDADES_LOG.forEach(r => { if (r.cd === selectedCD && r.justificada) m.set(r.personId + '|' + r.fecha, 'Incapacidad justificada'); });
+    return m;
+  }
+  function incapInjustificadas(){
+    const m = new Map();
+    INCAPACIDADES_LOG.forEach(r => { if (r.cd === selectedCD && !r.justificada) m.set(r.personId + '|' + r.fecha, r.motivo || ''); });
+    return m;
+  }
+  function descansosCargados(fecha){
+    if (DESCANSO_CARGAS.has(fecha)) return true;
+    return DESCANSO_EFECTIVO_LOG.some(r => r.cd === selectedCD && r.fecha === fecha);
+  }
+  function primerCargueDescansos(){
+    let min = null;
+    DESCANSO_CARGAS.forEach((v, f) => { if (!min || f < min) min = f; });
+    DESCANSO_EFECTIVO_LOG.forEach(r => { if (r.cd === selectedCD && (!min || r.fecha < min)) min = r.fecha; });
+    return min;
+  }
+  function horaBogota(){
+    const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+    return { h: (+p.find(x => x.type === 'hour').value) % 24, m: +p.find(x => x.type === 'minute').value };
+  }
+  const escH = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtDiaCorto = (f) => new Date(f + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' });
+
+  // Quién marcó una matinal sin estar en la asignación vigente ese día (ni 'No aplica').
+  function personasSinAsignarRecientes(){
+    const hoy = hoyBogota(), desde = sumarDiasISO(hoy, -14);
+    const ids = new Map();
+    ATTENDANCE_LOG.forEach(a => {
+      if (a.cd !== selectedCD || a.fecha < desde || a.fecha > hoy) return;
+      if (a.rutina !== 'Matinal Poblaciones' && a.rutina !== 'Matinal Metro') return;
+      const v = asignacionVigenteEnFecha(selectedCD, a.fecha);
+      if (!v) return;
+      const k = String(a.personId);
+      if (ASIGNACION_EXCLUIDOS.has(k)) return;
+      if ((v.personas || []).some(p => String(p.personId) === k)) return;
+      ids.set(k, a.nombre || k);
+    });
+    return ids;
+  }
+
+  // ---------- Alertas (campana del perfil maestro) ----------
+  function calcularAlertas(){
+    const out = [];
+    const hoy = hoyBogota(), { h } = horaBogota();
+    const primer = primerCargueDescansos();
+    if (esDiaLaboral(hoy) && !descansosCargados(hoy) && h >= HORA_LIMITE_CARGUE){
+      out.push({ nivel: 'alta', tab: 'tabCargues', titulo: 'Descansos efectivos de hoy sin cargar',
+        detalle: `Torre de Control debía cargarlos antes de las ${HORA_LIMITE_CARGUE}:00 a. m. Si hoy nadie tiene descanso efectivo, el día queda marcado como "no cargado".` });
+    }
+    if (primer){
+      const faltan = [];
+      let f = sumarDiasISO(hoy, -1), n = 0, guard = 0;
+      while (n < 7 && guard++ < 40){
+        if (esDiaLaboral(f)){ n++; if (f >= primer && !descansosCargados(f)) faltan.push(f); }
+        f = sumarDiasISO(f, -1);
+      }
+      if (faltan.length){
+        out.push({ nivel: 'media', tab: 'tabCargues', titulo: `Descansos efectivos sin cargar en ${faltan.length} día${faltan.length === 1 ? '' : 's'}`,
+          detalle: faltan.slice().reverse().map(fmtDiaCorto).join(' · ') });
+      }
+    }
+    const sa = personasSinAsignarRecientes();
+    if (sa.size){
+      const nombres = [...sa.values()];
+      out.push({ nivel: 'media', tab: 'tabAdherenciaRuta', titulo: `${sa.size} persona${sa.size === 1 ? '' : 's'} marca${sa.size === 1 ? '' : 'n'} matinal sin estar asignada${sa.size === 1 ? '' : 's'}`,
+        detalle: nombres.slice(0, 5).join(', ') + (nombres.length > 5 ? '…' : '') });
+    }
+    return out;
+  }
+
+  let campanaLista = false;
+  function setupCampana(){
+    if (campanaLista) return;
+    const btn = document.getElementById('bellBtn'), panel = document.getElementById('bellPanel');
+    if (!btn || !panel) return;
+    campanaLista = true;
+    btn.addEventListener('click', (e) => { e.stopPropagation(); panel.hidden = !panel.hidden; });
+    document.addEventListener('click', (e) => { if (!panel.hidden && !panel.contains(e.target)) panel.hidden = true; });
+    panel.addEventListener('click', (e) => {
+      const it = e.target.closest('[data-go]');
+      if (!it) return;
+      panel.hidden = true;
+      activarTabAdmin(it.dataset.go);
+    });
+    setInterval(actualizarCampana, 60000);
+  }
+  function actualizarCampana(){
+    const wrap = document.getElementById('bellWrap');
+    if (!wrap) return;
+    const visible = !!(currentUser && currentUser.admin) && !screenAdmin.hidden;
+    wrap.hidden = !visible;
+    if (!visible) return;
+    const al = calcularAlertas();
+    const badge = document.getElementById('bellBadge');
+    badge.hidden = al.length === 0;
+    badge.textContent = al.length;
+    document.getElementById('bellPanel').innerHTML = al.length
+      ? '<h6>Pendientes</h6>' + al.map(a => `<button class="bell-item ${a.nivel}" data-go="${a.tab}"><b><i></i>${escH(a.titulo)}</b><span>${escH(a.detalle)}</span></button>`).join('')
+      : '<div class="bell-vacio">✓ Todo al día. No hay cargues pendientes.</div>';
+  }
+
+  // ---------- Cambios en la asignación por ruta (alta / baja desde una fecha) ----------
+  // Trabaja sobre una copia en memoria de TODAS las versiones y escribe solo las
+  // que cambiaron, así varias altas/bajas seguidas no se pisan entre sí.
+  async function aplicarCambiosAsignacion(cambios){
+    const work = new Map();
+    ASIGNACION_RUTA_LOG.filter(v => v.cd === selectedCD).forEach(v => work.set(v.vigenciaDesde, { vigenciaDesde: v.vigenciaDesde, personas: (v.personas || []).slice(), dirty: false }));
+    const claves = () => [...work.keys()].sort();
+    const tiene = (v, id) => v.personas.some(p => String(p.personId) === id);
+    const asegurarVersion = (desde) => {
+      if (work.has(desde)) return true;
+      let base = null;
+      claves().forEach(k => { if (k <= desde) base = k; });
+      if (!base) return false; // nada vigente antes de esa fecha: no hay de dónde copiar
+      work.set(desde, { vigenciaDesde: desde, personas: work.get(base).personas.slice(), dirty: true });
+      return true;
+    };
+    cambios.forEach(c => {
+      if (c.op === 'add'){
+        const id = String(c.persona.personId);
+        asegurarVersion(c.desde);
+        claves().filter(k => k >= c.desde).forEach(k => { const v = work.get(k); if (!tiene(v, id)){ v.personas.push({ ...c.persona, manual: true }); v.dirty = true; } });
+      } else if (c.op === 'remove'){
+        const id = String(c.id);
+        asegurarVersion(c.desde);
+        claves().filter(k => k >= c.desde).forEach(k => { const v = work.get(k); if (tiene(v, id)){ v.personas = v.personas.filter(p => String(p.personId) !== id); v.dirty = true; } });
+      }
+    });
+    let n = 0;
+    for (const v of work.values()){
+      if (!v.dirty) continue;
+      await guardarAsignacionRuta({ vigenciaDesde: v.vigenciaDesde, personas: v.personas });
+      n++;
+    }
+    return n;
+  }
+
+  // ---------- Novedades de People ----------
+  const normTxt = (t) => String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+  function fechaDeCelda(v){
+    if (v == null || v === '') return '';
+    if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 10);
+    if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return m[0];
+    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return '';
+  }
+  function tipoNovedad(t){
+    const s = normTxt(t);
+    if (!s) return { tipo: '', motivo: '' };
+    if (s.startsWith('alta') || s.startsWith('ingreso') || s.startsWith('nuevo')) return { tipo: 'ALTA', motivo: '' };
+    if (s.startsWith('baja')) return { tipo: 'BAJA', motivo: '' };
+    if (s.startsWith('retiro') || s.startsWith('renuncia') || s.startsWith('despido')) return { tipo: 'BAJA', motivo: String(t).trim() };
+    if (s.startsWith('incap')) return { tipo: 'INCAPACIDAD', motivo: '' };
+    return { tipo: '?', motivo: '' };
+  }
+  function siNo(v){
+    const s = normTxt(v);
+    if (['si', 's', '1', 'true', 'justificada', 'justificado'].includes(s)) return true;
+    if (['no', 'n', '0', 'false', 'injustificada', 'injustificado'].includes(s)) return false;
+    return null;
+  }
+  function diasEntre(desde, hasta){
+    const out = []; let f = desde, g = 0;
+    while (f <= hasta && g++ < 400){ out.push(f); f = sumarDiasISO(f, 1); }
+    return out;
+  }
+  function validarNovedad(n){
+    if (n.tipo === '?' || !n.tipo) return 'Tipo no reconocido (usa ALTA, BAJA o INCAPACIDAD)';
+    if (!n.cedula) return 'Falta la cédula';
+    if (!n.desde) return 'Falta la fecha o no se entiende';
+    const p = PEOPLE.find(x => x.id === n.cedula);
+    if (n.tipo === 'ALTA'){
+      if (!p){
+        if (!n.nombre) return 'Falta el nombre';
+        if (!n.cargo) return 'Falta el cargo';
+        if (!['UC', 'OL', 'ABI'].includes(n.grupo)) return 'Grupo debe ser UC, OL o ABI';
+      }
+      const grupo = n.grupo || (p && p.grupo);
+      if (grupo === 'UC' && !['Poblaciones', 'Metro'].includes(n.zona)) return 'Zona debe ser Población o Metro (personal UC)';
+    } else if (n.tipo === 'BAJA'){
+      if (!p) return 'La cédula no existe en este CD';
+      if (p.activo === false) return 'Ya está inactiva';
+    } else if (n.tipo === 'INCAPACIDAD'){
+      if (!p) return 'La cédula no existe en este CD';
+      if (n.justificada === null || n.justificada === undefined) return 'Indica Justificada SI o NO';
+      if (n.hasta && n.hasta < n.desde) return 'La fecha fin es anterior al inicio';
+      if (diasEntre(n.desde, n.hasta || n.desde).length > 120) return 'Rango mayor a 120 días';
+    }
+    return '';
+  }
+  function describirNovedad(n){
+    const p = PEOPLE.find(x => x.id === n.cedula);
+    const nombre = n.nombre || (p && p.nombre) || '';
+    if (n.tipo === 'ALTA') return `${nombre} · ${n.cargo || (p && p.cargo) || ''} · ${(n.grupo || (p && p.grupo)) || ''}${n.zona ? ' · ' + (n.zona === 'Poblaciones' ? 'Población' : n.zona) : ''} · desde ${n.desde}`;
+    if (n.tipo === 'BAJA') return `${nombre} · baja desde ${n.desde}${n.motivo ? ' · ' + n.motivo : ''}`;
+    if (n.tipo === 'INCAPACIDAD') return `${nombre} · ${n.desde}${n.hasta && n.hasta !== n.desde ? ' a ' + n.hasta : ''} · ${n.justificada ? 'Justificada' : 'Injustificada'}${n.motivo ? ' · ' + n.motivo : ''}`;
+    return '';
+  }
+
+  let NOVEDADES_PENDIENTES = [];
+  function mostrarPreviewNovedades(lista){
+    const box = document.getElementById('peoplePreview');
+    NOVEDADES_PENDIENTES = lista.map(n => ({ ...n, error: validarNovedad(n) }));
+    const ok = NOVEDADES_PENDIENTES.filter(n => !n.error);
+    box.innerHTML = `<div class="nv-prev"><table>
+      <thead><tr><th>Tipo</th><th>Cédula</th><th>Detalle</th><th>Estado</th></tr></thead>
+      <tbody>${NOVEDADES_PENDIENTES.map(n => `<tr><td>${escH(n.tipo)}</td><td>${escH(n.cedula)}</td><td>${escH(describirNovedad(n))}</td><td class="${n.error ? 'bad' : 'ok'}">${n.error ? escH(n.error) : 'Lista'}</td></tr>`).join('')}</tbody></table></div>
+      <div class="descanso-card-row" style="margin-top:10px;">
+        <button class="btn-add" id="btnNvAplicar" style="flex:none;" ${ok.length ? '' : 'disabled'}>Aplicar ${ok.length} novedad${ok.length === 1 ? '' : 'es'}</button>
+        <button class="btn-secondary" id="btnNvCancelar" style="flex:none; padding:8px 14px; font-size:12px;">Cancelar</button>
+        ${NOVEDADES_PENDIENTES.length - ok.length ? `<span style="font-size:12px; color:var(--bad);">${NOVEDADES_PENDIENTES.length - ok.length} fila(s) con error no se guardarán.</span>` : ''}
+      </div>`;
+    document.getElementById('btnNvCancelar').addEventListener('click', () => { box.innerHTML = ''; NOVEDADES_PENDIENTES = []; });
+    document.getElementById('btnNvAplicar').addEventListener('click', async (ev) => {
+      const b = ev.currentTarget; b.disabled = true; b.textContent = 'Guardando…';
+      try {
+        const res = await aplicarNovedades(ok);
+        box.innerHTML = `<div class="descanso-preview-box">✓ Guardado: ${res}</div>`;
+        NOVEDADES_PENDIENTES = [];
+        renderCargues();
+      } catch (e){
+        console.error('No se pudieron guardar las novedades:', e);
+        b.disabled = false; b.textContent = 'Reintentar';
+        alert('No se pudo guardar todo. Revisa tu conexión e inténtalo de nuevo (lo ya guardado no se duplica).');
+      }
+    });
+  }
+
+  async function aplicarNovedades(lista){
+    const quien = (currentUser && currentUser.name) || '';
+    const ahora = new Date().toISOString();
+    let altas = 0, bajas = 0, incaps = 0;
+    const cambios = [];
+    for (const n of lista){
+      const p = PEOPLE.find(x => x.id === n.cedula);
+      if (n.tipo === 'ALTA'){
+        const grupo = n.grupo || (p && p.grupo);
+        const nombre = n.nombre || (p && p.nombre);
+        const cargo = n.cargo || (p && p.cargo) || '';
+        if (!p){
+          await setDoc(doc(colColaboradores, n.cedula), {
+            nombre, cargo, cd: selectedCD, grupo, dependencia: 'Operativo', pilar: '',
+            rutinas: RUTINAS_POR_GRUPO[grupo] || [], activo: true, turno: '', altaEn: n.desde, altaPor: quien,
+          });
+        } else if (p.activo === false){
+          await updateDoc(doc(colColaboradores, n.cedula), { activo: true, fechaBaja: '', motivoBaja: '', altaEn: n.desde, altaPor: quien });
+        }
+        if (grupo === 'UC') cambios.push({ op: 'add', desde: n.desde, persona: { personId: n.cedula, nombre, zona: n.zona, rol: rolSugeridoPorCargo(cargo) } });
+        altas++;
+      } else if (n.tipo === 'BAJA'){
+        await updateDoc(doc(colColaboradores, n.cedula), { activo: false, fechaBaja: n.desde, motivoBaja: n.motivo || '', bajaPor: quien });
+        cambios.push({ op: 'remove', desde: n.desde, id: n.cedula });
+        bajas++;
+      }
+    }
+    if (cambios.length) await aplicarCambiosAsignacion(cambios);
+    for (const n of lista.filter(x => x.tipo === 'INCAPACIDAD')){
+      const p = PEOPLE.find(x => x.id === n.cedula);
+      const dias = diasEntre(n.desde, n.hasta || n.desde);
+      await Promise.all(dias.map(f => setDoc(doc(colDescansoEfectivo, `${selectedCD}_${f}_${n.cedula}__inc`), {
+        cd: selectedCD, tipo: 'incapacidad', fecha: f, personId: n.cedula, nombre: (p && p.nombre) || n.nombre || '',
+        justificada: !!n.justificada, motivo: n.motivo || '', registradoPor: quien, registradoEn: ahora,
+      })));
+      incaps++;
+    }
+    const partes = [];
+    if (altas) partes.push(`${altas} alta${altas === 1 ? '' : 's'}`);
+    if (bajas) partes.push(`${bajas} baja${bajas === 1 ? '' : 's'}`);
+    if (incaps) partes.push(`${incaps} incapacidad${incaps === 1 ? '' : 'es'}`);
+    return partes.join(' · ');
+  }
+
+  function descargarPlantillaNovedades(){
+    if (typeof XLSX === 'undefined'){ alert('No se pudo cargar el generador de Excel (sin conexión al CDN).'); return; }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([['Tipo', 'Cédula', 'Nombre', 'Cargo', 'Grupo', 'Zona', 'Fecha', 'Fecha fin', 'Justificada', 'Motivo']]);
+    ws['!cols'] = [12, 14, 30, 24, 8, 12, 12, 12, 12, 28].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
+    const ins = XLSX.utils.aoa_to_sheet([
+      ['Una fila por novedad. Borra las filas de ejemplo antes de subir.'],
+      [],
+      ['Tipo', 'Qué llenar', 'Ejemplo'],
+      ['ALTA', 'Cédula, Nombre, Cargo, Grupo (UC/OL/ABI), Zona (Población/Metro, solo UC) y Fecha desde la que cuenta', 'ALTA | 1012345678 | Juan Pérez | Auxiliar de reparto | UC | Metro | 2026-11-16'],
+      ['BAJA', 'Cédula, Fecha de la baja y Motivo (retiro, renuncia o despido)', 'BAJA | 1012345678 | | | | | 2026-11-20 | | | Renuncia'],
+      ['INCAPACIDAD', 'Cédula, Fecha (inicio), Fecha fin (opcional), Justificada SI/NO y Motivo (opcional)', 'INCAPACIDAD | 1012345678 | | | | | 2026-11-17 | 2026-11-19 | SI | Enfermedad general'],
+      [],
+      ['Fechas en formato AAAA-MM-DD o DD/MM/AAAA. Las incapacidades se pueden registrar días después.'],
+    ]);
+    ins['!cols'] = [{ wch: 14 }, { wch: 80 }, { wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, ins, 'Instrucciones');
+    XLSX.writeFile(wb, 'plantilla_novedades_people.xlsx');
+  }
+
+  async function leerExcelNovedades(file){
+    if (typeof XLSX === 'undefined') throw new Error('No se pudo cargar el lector de Excel (sin conexión al CDN).');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets['Novedades'] || wb.Sheets[wb.SheetNames[0]];
+    const filas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+    let idx = -1;
+    for (let i = 0; i < Math.min(filas.length, 15); i++){
+      if ((filas[i] || []).some(c => normTxt(c) === 'tipo')) { idx = i; break; }
+    }
+    if (idx === -1) throw new Error('No se encontró la fila de encabezados (columna "Tipo"). Usa la plantilla.');
+    const cab = filas[idx].map(normTxt);
+    const col = (...nombres) => cab.findIndex(c => nombres.includes(c));
+    const c = {
+      tipo: col('tipo'), cedula: col('cedula', 'documento', 'identificacion'), nombre: col('nombre'), cargo: col('cargo'),
+      grupo: col('grupo'), zona: col('zona'), desde: col('fecha', 'fecha desde', 'desde', 'fecha inicio'),
+      hasta: col('fecha fin', 'hasta', 'fecha final'), just: col('justificada', 'justificado'), motivo: col('motivo', 'observacion'),
+    };
+    if (c.cedula === -1 || c.desde === -1) throw new Error('Faltan las columnas "Cédula" o "Fecha". Usa la plantilla.');
+    const get = (f, k) => (c[k] === -1 ? null : f[c[k]]);
+    const out = [];
+    for (let i = idx + 1; i < filas.length; i++){
+      const f = filas[i];
+      if (!f || f.every(x => x == null || String(x).trim() === '')) continue;
+      const t = tipoNovedad(get(f, 'tipo'));
+      const grupoRaw = String(get(f, 'grupo') || '').trim().toUpperCase();
+      const zonaRaw = normTxt(get(f, 'zona'));
+      const motivoCel = String(get(f, 'motivo') || '').trim();
+      let desde = fechaDeCelda(get(f, 'desde'));
+      if (!desde && (t.tipo === 'ALTA' || t.tipo === 'BAJA') && (get(f, 'desde') == null || get(f, 'desde') === '')) desde = hoyBogota();
+      out.push({
+        tipo: t.tipo, cedula: normalizarCedulaExcel(get(f, 'cedula')),
+        nombre: String(get(f, 'nombre') || '').trim(), cargo: String(get(f, 'cargo') || '').trim(),
+        grupo: grupoRaw, zona: zonaRaw.startsWith('pob') ? 'Poblaciones' : zonaRaw.startsWith('metro') ? 'Metro' : '',
+        desde, hasta: fechaDeCelda(get(f, 'hasta')), justificada: siNo(get(f, 'just')), motivo: motivoCel || t.motivo,
+      });
+    }
+    if (!out.length) throw new Error('El archivo no tiene filas con datos.');
+    return out;
+  }
+
+  // ---------- Pantalla "Cargues" ----------
+  let carguesListo = false;
+  function setupPeopleUI(){
+    if (carguesListo) return;
+    carguesListo = true;
+    document.getElementById('btnNvPlantilla').addEventListener('click', descargarPlantillaNovedades);
+    const fi = document.getElementById('nvFileInput');
+    document.getElementById('btnNvElegir').addEventListener('click', () => fi.click());
+    fi.addEventListener('change', async () => {
+      const file = fi.files[0];
+      if (!file) return;
+      document.getElementById('nvFileName').textContent = file.name;
+      try { mostrarPreviewNovedades(await leerExcelNovedades(file)); }
+      catch (e){ document.getElementById('peoplePreview').innerHTML = `<div class="descanso-preview-box" style="color:var(--bad);">No se pudo leer el archivo: ${escH(e.message || e)}</div>`; }
+      fi.value = '';
+    });
+    const tipo = document.getElementById('nvTipo');
+    const ajustar = () => {
+      document.querySelectorAll('#cardPeople [data-t]').forEach(l => { l.style.display = l.dataset.t.split(' ').includes(tipo.value) ? '' : 'none'; });
+      document.getElementById('nvDesdeLbl').textContent = tipo.value === 'ALTA' ? 'Cuenta desde' : tipo.value === 'BAJA' ? 'Fecha de la baja' : 'Desde';
+    };
+    tipo.addEventListener('change', ajustar); ajustar();
+    document.getElementById('nvDesde').value = hoyBogota();
+    const ced = document.getElementById('nvCedula');
+    ced.addEventListener('input', () => {
+      const id = normalizarCedulaExcel(ced.value);
+      const p = PEOPLE.find(x => x.id === id);
+      document.getElementById('nvQuien').textContent = p ? `${p.nombre} · ${p.cargo || ''} · ${p.grupo || ''}${p.activo === false ? ' · INACTIVO' : ''}` : (id.length > 5 ? 'No existe en este CD' : '');
+    });
+    document.getElementById('btnNvRevisar').addEventListener('click', () => {
+      const t = tipo.value;
+      const cedula = normalizarCedulaExcel(ced.value);
+      mostrarPreviewNovedades([{
+        tipo: t, cedula, nombre: document.getElementById('nvNombre').value.trim(), cargo: document.getElementById('nvCargo').value.trim(),
+        grupo: document.getElementById('nvGrupo').value, zona: document.getElementById('nvZona').value,
+        desde: document.getElementById('nvDesde').value, hasta: document.getElementById('nvHasta').value,
+        justificada: document.getElementById('nvJust').value === '1', motivo: document.getElementById('nvMotivo').value.trim(),
+      }]);
+    });
+    document.getElementById('incLista').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-del-inc]');
+      if (!b) return;
+      const g = gruposIncapacidades().find(x => x.clave === b.dataset.delInc);
+      if (!g || !confirm(`¿Quitar la incapacidad de ${g.nombre} (${g.desde}${g.hasta !== g.desde ? ' a ' + g.hasta : ''})? Las gráficas se recalculan.`)) return;
+      b.disabled = true;
+      try { await Promise.all(g.ids.map(id => deleteDoc(doc(colDescansoEfectivo, id)))); }
+      catch (err){ console.error(err); alert('No se pudo quitar. Inténtalo de nuevo.'); b.disabled = false; }
+    });
+    const ir = document.getElementById('btnIrNominas');
+    if (ir) ir.addEventListener('click', () => activarTabAdmin('tabAsignacionNominas'));
+    document.querySelectorAll('#cardTorre [data-dias]').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('descansoFecha').value = sumarDiasISO(hoyBogota(), +b.dataset.dias);
+    }));
+  }
+
+  function gruposIncapacidades(){
+    const arr = INCAPACIDADES_LOG.filter(r => r.cd === selectedCD).slice()
+      .sort((a, b) => (a.personId + a.fecha).localeCompare(b.personId + b.fecha));
+    const grupos = [];
+    arr.forEach(r => {
+      const g = grupos[grupos.length - 1];
+      if (g && g.personId === r.personId && g.justificada === !!r.justificada && g.motivo === (r.motivo || '') && sumarDiasISO(g.hasta, 1) === r.fecha){
+        g.hasta = r.fecha; g.ids.push(`${selectedCD}_${r.fecha}_${r.personId}__inc`); g.dias++;
+      } else {
+        grupos.push({ clave: `${r.personId}|${r.fecha}`, personId: r.personId, nombre: r.nombre || r.personId, desde: r.fecha, hasta: r.fecha, dias: 1,
+          justificada: !!r.justificada, motivo: r.motivo || '', por: r.registradoPor || '', en: r.registradoEn || '', ids: [`${selectedCD}_${r.fecha}_${r.personId}__inc`] });
+      }
+    });
+    return grupos.sort((a, b) => b.desde.localeCompare(a.desde));
+  }
+
+  function renderEstadoDescansos(){
+    const box = document.getElementById('estadoDescansos');
+    if (!box) return;
+    const hoy = hoyBogota(), { h } = horaBogota();
+    const dias = [];
+    const manana = sumarDiasISO(hoy, 1);
+    if (descansosCargados(manana)) dias.push(manana);
+    let f = hoy, n = 0, g = 0;
+    while (n < 8 && g++ < 40){ if (esDiaLaboral(f)){ dias.push(f); n++; } f = sumarDiasISO(f, -1); }
+    box.innerHTML = '<div class="cg-days">' + dias.map(d => {
+      const cargado = descansosCargados(d);
+      const c = DESCANSO_CARGAS.get(d);
+      const nEx = DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD && r.fecha === d).length;
+      const primer = primerCargueDescansos();
+      const pend = !cargado && d >= hoy && !(d === hoy && h >= HORA_LIMITE_CARGUE);
+      const antes = !cargado && !pend && d !== hoy && (!primer || d < primer); // días anteriores a la primera carga: no hay registro
+      const cls = cargado ? 'ok' : (pend || antes) ? 'pend' : 'no';
+      const txt = cargado ? `cargado · ${nEx} excusa${nEx === 1 ? '' : 's'}` : pend ? 'pendiente' : antes ? 'sin registro' : 'NO cargado';
+      return `<div class="cg-day ${cls}" title="${c && c.cargadoPor ? 'Cargó ' + escH(c.cargadoPor) : ''}"><b>${fmtDiaCorto(d)}</b><em>${txt}</em></div>`;
+    }).join('') + '</div>';
+  }
+
+  function renderCargues(){
+    setupDescansoEfectivoUI();
+    setupPeopleUI();
+    renderEstadoDescansos();
+    const dl = document.getElementById('nvCedulas');
+    if (dl) dl.innerHTML = PEOPLE.filter(p => p.cd === selectedCD).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es')).map(p => `<option value="${escH(p.id)}">${escH(p.nombre)}${p.activo === false ? ' (inactivo)' : ''}</option>`).join('');
+    const lista = document.getElementById('incLista');
+    const gs = gruposIncapacidades().slice(0, 15);
+    lista.innerHTML = gs.length ? gs.map(g => `<div class="fila"><div><b>${escH(g.nombre)}</b> · ${g.desde}${g.hasta !== g.desde ? ' a ' + g.hasta : ''} (${g.dias} día${g.dias === 1 ? '' : 's'}) · ${g.justificada ? '<span style="color:var(--ok)">Justificada</span>' : '<span style="color:var(--bad)">Injustificada</span>'}${g.motivo ? ' · ' + escH(g.motivo) : ''}<small>${g.por ? 'Registró ' + escH(g.por) : ''}${g.en ? ' · ' + new Date(g.en).toLocaleString('es-CO') : ''}</small></div><button class="btn-secondary" data-del-inc="${escH(g.clave)}" style="padding:5px 10px; font-size:12px;">Quitar</button></div>`).join('')
+      : '<div class="empty-state" style="padding:12px;">Aún no hay incapacidades registradas.</div>';
+    const hoy = hoyBogota(), desde = sumarDiasISO(hoy, -30);
+    const mov = [];
+    PEOPLE.filter(p => p.cd === selectedCD).forEach(p => {
+      if (p.altaEn && p.altaEn >= desde) mov.push({ f: p.altaEn, t: 'Alta', p });
+      if (p.activo === false && p.fechaBaja && p.fechaBaja >= desde) mov.push({ f: p.fechaBaja, t: 'Baja', p });
+    });
+    mov.sort((a, b) => b.f.localeCompare(a.f));
+    document.getElementById('novedadesRecientes').innerHTML = mov.length ? mov.map(m => `<div class="fila"><div><b>${m.t}</b> · ${escH(m.p.nombre)} <small>${m.f}${m.t === 'Baja' && m.p.motivoBaja ? ' · ' + escH(m.p.motivoBaja) : ''}${m.p.grupo ? ' · ' + escH(m.p.grupo) : ''}</small></div></div>`).join('')
+      : '<div class="empty-state" style="padding:12px;">Sin altas ni bajas en los últimos 30 días.</div>';
+  }
+
   function setupDescansoEfectivoUI(){
     const fechaInput = document.getElementById('descansoFecha');
     if (fechaInput.dataset.filled) return;
     fechaInput.dataset.filled = '1';
-    fechaInput.value = new Date().toISOString().slice(0, 10);
+    fechaInput.value = hoyBogota();
 
     const fileInput = document.getElementById('descansoFileInput');
     const fileNameLabel = document.getElementById('descansoFileName');
@@ -3894,7 +4510,7 @@
         const colDisponible = headers.indexOf('DISPONIBLE');
         if (colDisponible === -1) throw new Error('No se encontró la columna DISPONIBLE en el archivo.');
 
-        const fecha = fechaInput.value.trim() || new Date().toISOString().slice(0, 10);
+        const fecha = fechaInput.value.trim() || hoyBogota();
         const peopleById = new Map(PEOPLE.map(p => [p.id, p]));
         const conExcusa = [];
         const sinCruzar = [];
@@ -3927,7 +4543,7 @@
               .sort((a, b) => a.nombre.localeCompare(b.nombre))
               .map(f => `<div class="descanso-preview-item"><span>${f.nombre}</span><span>Disponible ${formatoHHMM(f.minutos)}</span></div>`)
               .join('')
-          : '<div class="empty-state" style="padding:14px 8px;">Nadie en este archivo quedó disponible a las 6:05 a. m. o después.</div>';
+          : '<div class="empty-state" style="padding:14px 8px;">Nadie en este archivo quedó disponible a las 6:05 a. m. o después. Aun así puedes guardar para dejar constancia de que el cargue de este día se hizo.</div>';
 
         const avisoSinCruzar = sinCruzar.length
           ? `<div class="descanso-preview-warn">${sinCruzar.length} cédula(s) del archivo con excusa no se encontraron entre los colaboradores de este CD (revisa si son de otro CD o si la cédula está mal escrita) — no se van a guardar.</div>`
@@ -3939,7 +4555,7 @@
             ${avisoSinCruzar}
             <div class="descanso-preview-list">${listaHtml}</div>
             <div style="display:flex; gap:10px;">
-              <button class="btn-add" id="btnDescansoGuardar" style="flex:none;" ${conExcusa.length ? '' : 'disabled'}>Guardar ${conExcusa.length} excusa(s) para ${fecha}</button>
+              <button class="btn-add" id="btnDescansoGuardar" style="flex:none;" ${filasLeidas ? '' : 'disabled'}>Guardar ${conExcusa.length} excusa(s) para ${fecha}</button>
               <button class="btn-secondary" id="btnDescansoCancelar" style="flex:none; padding:8px 14px; font-size:12px;">Cancelar</button>
             </div>
           </div>
@@ -3985,7 +4601,12 @@
   async function guardarDescansoEfectivo({ fecha, filas }){
     const qExistentes = query(colDescansoEfectivo, where('cd', '==', selectedCD), where('fecha', '==', fecha));
     const existentesSnap = await getDocs(qExistentes);
-    await Promise.all(existentesSnap.docs.map(d => deleteDoc(d.ref)));
+    // Solo se reemplazan las excusas del día: las incapacidades y la constancia de cargue (tipo) se conservan.
+    await Promise.all(existentesSnap.docs.filter(d => !d.data().tipo).map(d => deleteDoc(d.ref)));
+    await setDoc(doc(colDescansoEfectivo, `${selectedCD}_${fecha}__carga`), {
+      cd: selectedCD, fecha, tipo: 'carga', n: filas.length,
+      cargadoPor: (currentUser && currentUser.name) || '', cargadoEn: new Date().toISOString(),
+    });
     await Promise.all(filas.map(f => setDoc(doc(colDescansoEfectivo, `${selectedCD}_${fecha}_${f.personId}`), {
       cd: selectedCD,
       fecha,
@@ -4054,11 +4675,7 @@
     // Días con excusa por Descanso Efectivo (ver "Cargar Descanso Efectivo del día"
     // arriba): personId+fecha con DISPONIBLE >= 6:05 a. m. ese día, dentro del
     // mismo rango de fechas que el resto de esta vista.
-    const descansoSet = new Set(
-      DESCANSO_EFECTIVO_LOG
-        .filter(r => r.cd === selectedCD && fechaEnRango(r.fecha, fDesde, fHasta))
-        .map(r => r.personId + '|' + r.fecha)
-    );
+    const descansoSet = new Set([...mapaExcusas().keys()].filter(k => fechaEnRango(k.split('|')[1], fDesde, fHasta)));
 
     const sesionesVistas = new Set(); // personId|rutina|fecha, para no duplicar entre designados y asistencias
     desigCD.forEach(d => {
@@ -4560,6 +5177,12 @@
   // otra fecha de vigencia NO se tocan — cada una queda como su propio "corte"
   // histórico (ver asignacionVigenteEnFecha).
   async function guardarAsignacionRuta({ vigenciaDesde, personas }){
+    // Una persona con baja (inactiva) no vuelve a la asignación de versiones desde su fecha de baja,
+    // aunque el Excel NOMINAS que sube Reparto todavía la traiga.
+    personas = (personas || []).filter(pp => {
+      const c = PEOPLE.find(x => x.id === String(pp.personId));
+      return !(c && c.activo === false && c.fechaBaja && c.fechaBaja <= vigenciaDesde);
+    });
     await setDoc(doc(colAsignacionesRuta, `${selectedCD}_${vigenciaDesde}`), {
       cd: selectedCD,
       vigenciaDesde,
@@ -4693,8 +5316,9 @@
 
     // Descanso Efectivo: personId+fecha con excusa (ya excluye "sin dato" al
     // guardar — ver guardarDescansoEfectivo).
-    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+    const descansoSet = mapaExcusas();
 
+    const injustMap = incapInjustificadas();
     ADHR_DETALLE_CACHE = {};
 
     // Un día "cuenta" para el gráfico solo si ya había una carga vigente esa
@@ -4709,10 +5333,11 @@
         const detalle = [];
         asignados.forEach(p => {
           const marca = ATTENDANCE_LOG.find(a => a.cd === selectedCD && a.fecha === fecha && a.personId === p.personId && (a.rutina === 'Matinal Poblaciones' || a.rutina === 'Matinal Metro'));
-          let estado;
+          let estado, obs = '';
+          const kEx = p.personId + '|' + fecha;
           if (marca){ asistieron++; estado = 'Asistió'; }
-          else if (descansoSet.has(p.personId + '|' + fecha)){ excusa++; estado = 'Excusa (Descanso Efectivo)'; }
-          else { estado = 'Faltó'; }
+          else if (descansoSet.has(kEx)){ excusa++; estado = 'Excusa (Descanso Efectivo)'; obs = descansoSet.get(kEx); }
+          else { estado = 'Faltó'; if (injustMap.has(kEx)) obs = 'Incapacidad injustificada'; }
           // horaMarcacion solo existe si asistió. statusMarcacion NO se toma
           // directo de ATTENDANCE_LOG.status: ese status se calculó contra la
           // ventana de la rutina donde la persona marcó en verdad (puede ser
@@ -4728,7 +5353,7 @@
             ? (minutosMarcacion <= limiteZona ? 'ok' : 'late')
             : (marca ? marca.status : null);
           detalle.push({
-            personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado,
+            personId: p.personId, nombre: p.nombre, cargo: p.rol || '', estado, obs,
             cargoReal: ((PEOPLE.find(x => x.id === p.personId) || {}).cargo || '').trim(),
             horaMarcacion: marca ? marca.time : null,
             statusMarcacion,
@@ -4803,7 +5428,7 @@
       const numOrBlank = (v) => (v > 0 && pct(v) >= 7) ? `<span class="adhr-seg-num">${v}</span>` : '';
       return `
         <div class="adhr-seg falto" style="height:${pct(seg.faltaron)}%;" title="Faltaron: ${seg.faltaron} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Faltó">${numOrBlank(seg.faltaron)}</div>
-        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (Descanso Efectivo): ${seg.excusa} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Excusa (Descanso Efectivo)">${numOrBlank(seg.excusa)}</div>
+        <div class="adhr-seg excusa" style="height:${pct(seg.excusa)}%;" title="Excusa (descanso efectivo o incapacidad justificada): ${seg.excusa} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Excusa (Descanso Efectivo)">${numOrBlank(seg.excusa)}</div>
         <div class="adhr-seg asistio" style="height:${pct(seg.asistieron)}%;" title="Asistieron: ${seg.asistieron} de ${total}" data-fecha="${fecha}" data-zona="${zona}" data-cat="Asistió">${numOrBlank(seg.asistieron)}</div>
       `;
     };
@@ -4818,7 +5443,7 @@
       <div class="adhr-legend-row">
         <div class="adhr-legend" style="margin-bottom:0;">
           <div class="adhr-legend-item"><span class="adhr-legend-dot asistio"></span>Asistieron (QR)</div>
-          <div class="adhr-legend-item"><span class="adhr-legend-dot excusa"></span>Excusa (Descanso Efectivo)</div>
+          <div class="adhr-legend-item"><span class="adhr-legend-dot excusa"></span>Excusa (descanso efectivo / incapacidad)</div>
           <div class="adhr-legend-item"><span class="adhr-legend-dot falto"></span>Faltaron</div>
           <div class="adhr-legend-item"><span class="adhr-legend-dot" style="border:1.5px dashed #d4a017; background:rgba(212,160,23,0.2);"></span>+N marcó sin estar asignado (no cuenta en el %)</div>
         </div>
@@ -5230,14 +5855,15 @@
         const g = (est) => ordenar(lista.filter(p => p.estado === est));
         const asi = lista.filter(p => p.estado === 'Asistió').sort((a, b) => (a.minutosMarcacion ?? 9e9) - (b.minutosMarcacion ?? 9e9));
         const fal = g('Faltó'), exc = g('Excusa (Descanso Efectivo)'), sin = g('Sin asignar (marcó)');
-        const li = (p, conHora) => `<li class="${p.statusMarcacion === 'late' ? 'late' : ''}"><span>${esc2(p.nombre || p.personId)}${p.cargoReal ? ' · ' + esc2(p.cargoReal) : ''}</span><span>${conHora && p.horaMarcacion ? esc2(p.horaMarcacion) + (p.statusMarcacion === 'late' ? ' · tarde' : '') : ''}</span></li>`;
+        const li = (p, conHora) => `<li class="${p.statusMarcacion === 'late' ? 'late' : ''}"><span>${esc2(p.nombre || p.personId)}${p.cargoReal ? ' · ' + esc2(p.cargoReal) : ''}</span><span>${!conHora && p.obs ? esc2(p.obs) : ''}${conHora && p.horaMarcacion ? esc2(p.horaMarcacion) + (p.statusMarcacion === 'late' ? ' · tarde' : '') : ''}</span></li>`;
         const col = (cls, tit, arr, h) => `<div class="dd-col ${cls}"><h5><span>${tit}</span><span>${arr.length}</span></h5><ul>${arr.length ? arr.map(p => li(p, h)).join('') : '<li><span style="color:var(--text-faint)">Nadie</span><span></span></li>'}</ul></div>`;
         return `<div class="dd-zona"><b>${zonaLabel[z]}</b><div class="dd-cols">
-          ${col('a', 'Asistieron', asi, true)}${col('f', 'Faltaron', fal, false)}${col('e', 'Excusa (descanso efectivo)', exc, false)}${sin.length ? col('s', 'Marcaron sin estar asignados', sin, true) : ''}
+          ${col('a', 'Asistieron', asi, true)}${col('f', 'Faltaron', fal, false)}${col('e', 'Excusa (descanso o incapacidad)', exc.map(x => ({ ...x, obs: x.obs })), false)}${sin.length ? col('s', 'Marcaron sin estar asignados', sin, true) : ''}
         </div></div>`;
       };
       det.innerHTML = `<div class="dd-det">
         <div class="dd-det-head"><h4>Detalle del ${new Date(fecha + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</h4>
+          ${descansosCargados(fecha) ? '' : '<span class="pill gold" title="Torre de Control no cargó los descansos efectivos de este día: si alguien tenía descanso, aparece como falta.">⚠ Descansos efectivos no cargados</span>'}
           <button class="dd-btn" id="ddXlsx">⬇ Descargar Excel del día</button>
           <button class="dd-btn sec" id="ddCerrar">Cerrar</button></div>
         ${zonasAMostrar.map(bloque).join('')}</div>`;
@@ -5280,17 +5906,18 @@
       r.getCell(7).numFmt = '0.0%';
     });
     ws1.addRow([]);
+    ws1.addRow([`Descansos efectivos de este día: ${descansosCargados(fecha) ? 'cargados por Torre de Control' : 'NO cargados (si alguien tenía descanso, aparece como falta)'}`]).font = { bold: true };
     ws1.addRow(['Adherencia = asistieron ÷ (asignados − excusa). Los "sin asignar" no cuentan en el %.']).font = { italic: true, color: { argb: 'FF666666' } };
     ws1.columns = [{ width: 16 }, { width: 12 }, { width: 12 }, { width: 10 }, { width: 10 }, { width: 20 }, { width: 14 }];
     const ws2 = wb.addWorksheet('Detalle');
-    hdr(ws2.addRow(['Fecha', 'Zona', 'Documento', 'Nombre', 'Cargo', 'Rol asignado', 'Estado', 'Hora de marcación', 'Puntualidad']));
+    hdr(ws2.addRow(['Fecha', 'Zona', 'Documento', 'Nombre', 'Cargo', 'Rol asignado', 'Estado', 'Hora de marcación', 'Puntualidad', 'Observación']));
     filas.forEach(p => {
-      const r = ws2.addRow([fecha, zl[p.z], p.personId, p.nombre || '', p.cargoReal || '', p.cargo || '', p.estado, p.horaMarcacion || '', p.statusMarcacion === 'ok' ? 'A tiempo' : p.statusMarcacion === 'late' ? 'Tarde' : '']);
+      const r = ws2.addRow([fecha, zl[p.z], p.personId, p.nombre || '', p.cargoReal || '', p.cargo || '', p.estado, p.horaMarcacion || '', p.statusMarcacion === 'ok' ? 'A tiempo' : p.statusMarcacion === 'late' ? 'Tarde' : '', p.obs || '']);
       r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color[p.estado] || 'FFFFFFFF' } };
     });
-    ws2.columns = [{ width: 12 }, { width: 12 }, { width: 14 }, { width: 34 }, { width: 28 }, { width: 22 }, { width: 28 }, { width: 18 }, { width: 14 }];
+    ws2.columns = [{ width: 12 }, { width: 12 }, { width: 14 }, { width: 34 }, { width: 28 }, { width: 22 }, { width: 28 }, { width: 18 }, { width: 14 }, { width: 28 }];
     ws2.views = [{ state: 'frozen', ySplit: 1 }];
-    ws2.autoFilter = { from: 'A1', to: 'I1' };
+    ws2.autoFilter = { from: 'A1', to: 'J1' };
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
@@ -5888,7 +6515,7 @@
   function totalesAdhrEnFecha(fecha, zonasAMostrar, fCargo){
     const v = asignacionVigenteEnFecha(selectedCD, fecha);
     if (!v) return null;
-    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+    const descansoSet = mapaExcusas();
     let asistieron = 0, excusa = 0, faltaron = 0, total = 0;
     zonasAMostrar.forEach(zona => {
       const asignados = v.personas.filter(p => p.zona === zona && (!fCargo || p.rol === fCargo));
@@ -5934,7 +6561,7 @@
 
     const categorias = [
       { key: 'asistieron', label: 'Asistieron (QR)', color: 'var(--ok)' },
-      { key: 'excusa', label: 'Excusa (Descanso Efectivo)', color: 'var(--exc)' },
+      { key: 'excusa', label: 'Excusa (descanso efectivo / incapacidad)', color: 'var(--exc)' },
       { key: 'faltaron', label: 'Faltaron', color: 'var(--bad)' },
     ];
 
@@ -6197,7 +6824,7 @@
 
     const desig = DESIGNATION_LOG.filter(d => d.cd === selectedCD && fechaEnRango(d.fecha, fDesde, fHasta));
     const asis = ATTENDANCE_LOG.filter(a => a.cd === selectedCD && fechaEnRango(a.fecha, fDesde, fHasta));
-    const descansoSet = new Set(DESCANSO_EFECTIVO_LOG.filter(r => r.cd === selectedCD).map(r => r.personId + '|' + r.fecha));
+    const descansoSet = mapaExcusas();
     const asisPorKey = new Map(asis.map(a => [a.personId + '|' + a.rutina + '|' + a.fecha, a]));
     const sesiones = new Map();
     const base = (r) => {
@@ -7254,6 +7881,7 @@
   // estadísticas del líder, así que ambos disparan el mismo refresco.
   function refrescarVistaAdminYLider(){
     if (!screenAdmin.hidden){
+      actualizarCampana();
       const activeTab = document.querySelector('.admin-tab.active');
       const tabId = activeTab ? (activeTab.dataset.tab === 'adhHub' ? subAdhActual : activeTab.dataset.tab) : null;
       if (tabId === 'tabColaboradores') renderColabTable();
@@ -7263,6 +7891,7 @@
       else if (tabId === 'tabAdherenciaRuta') renderAdherenciaRuta();
       else if (tabId === 'tabCalendarioUso') renderCalendarioUso();
       else if (tabId === 'tabAsignacionNominas') renderAsignacionVersiones();
+      else if (tabId === 'tabCargues') renderCargues();
       else if (!tabId) renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin));
       else renderAdmin(!!(currentUser && currentUser.reportOnly && !currentUser.admin)); // KPIs de la portada dependen de PEOPLE también
     }

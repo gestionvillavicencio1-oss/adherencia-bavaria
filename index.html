@@ -1812,6 +1812,20 @@
         <div class="section-title">Calendario de uso y líderes que cargaron rutinas</div>
       </div>
       <p class="adh-note">Cada día muestra cuántas marcas (registros) se cargaron, separadas en <b>UC</b> y <b>OL</b>, y cuántos líderes las cargaron. Haz clic en un día para ver el cruce por líder. El líder de cada marca se guarda desde la actualización de trazabilidad: lo anterior aparece como <b>"Sin líder registrado"</b>. Los fines de semana y festivos solo cuentan si se cargaron rutinas.</p>
+      <div class="descanso-card" id="cardExcelMatinales">
+        <div class="descanso-card-head">
+          <div>
+            <div class="descanso-card-title">Descargar Excel · asistencia a Matinales UC</div>
+            <div class="descanso-card-sub">Quién asistió a Matinal Poblaciones y Matinal Metro en el rango elegido. Usa los registros tal como se escanearon, <b>sin cruzar con la asignación NOMINAS</b>. Trae 3 hojas: por persona, por día y el detalle de cada marca.</div>
+          </div>
+        </div>
+        <div class="descanso-card-row">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Desde <input type="date" id="xlMatDesde" style="width:140px;"></label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-faint);">Hasta <input type="date" id="xlMatHasta" style="width:140px;"></label>
+          <button class="btn-add" id="btnXlMatinales" style="flex:none;">⬇ Descargar Excel</button>
+          <span id="xlMatMsg" style="font-size:12px; color:var(--text-faint);"></span>
+        </div>
+      </div>
       <div class="fbar-host"></div>
       <div id="calUsoWrap"></div>
     </div>
@@ -6196,6 +6210,138 @@
       return { ...prim, conEntrenamiento: conEntren };
     });
   }
+
+
+  // ---------- Excel simple: asistentes a Matinales UC (sin considerar asignaciones) ----------
+  async function descargarExcelMatinalesUC(desde, hasta){
+    if (typeof ExcelJS === 'undefined') throw new Error('No se pudo cargar el generador de Excel (sin conexión al CDN).');
+    const MAT = ['Matinal Poblaciones', 'Matinal Metro'];
+    const filas = ATTENDANCE_LOG.filter(a => a.cd === selectedCD && MAT.includes(a.rutina) && a.fecha >= desde && a.fecha <= hasta)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.rutina.localeCompare(b.rutina) || (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+    if (!filas.length) throw new Error('No hay marcas de Matinal UC en ese rango.');
+    const nombreDe = (a) => { const p = PEOPLE.find(x => x.id === String(a.personId)); return (p && p.nombre) || a.nombre || ''; };
+    const cargoDe = (a) => { const p = PEOPLE.find(x => x.id === String(a.personId)); return (p && p.cargo) || a.cargo || ''; };
+    const aFecha = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+    const dia = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' });
+    const corto = (r) => r === 'Matinal Poblaciones' ? 'Poblaciones' : 'Metro';
+    const AZUL = 'FF0B2A5B';
+    const estilo = (ws, anchos) => {
+      ws.columns = anchos.map(w => ({ width: w }));
+      const h = ws.getRow(1);
+      h.height = 22;
+      h.eachCell(c => {
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL } };
+        c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: anchos.length } };
+    };
+
+    const wb = new ExcelJS.Workbook();
+
+    // --- Hoja 3 (se arma primero para poder referenciarla en las fórmulas): Detalle
+    const wsP = wb.addWorksheet('Por persona');
+    const wsD = wb.addWorksheet('Por día');
+    const wsT = wb.addWorksheet('Detalle');
+    wsT.addRow(['Fecha', 'Día', 'Matinal', 'Cédula', 'Nombre', 'Cargo', 'Hora', 'Puntualidad', 'Cargó (líder)']);
+    filas.forEach(a => {
+      const r = wsT.addRow([aFecha(a.fecha), dia(a.fecha), corto(a.rutina), String(a.personId), nombreDe(a), cargoDe(a), a.time || '', a.status === 'late' ? 'Tarde' : 'A tiempo', a.cargadoPor || 'Sin líder registrado']);
+      r.getCell(1).numFmt = 'dd/mm/yyyy';
+    });
+    estilo(wsT, [12, 12, 13, 14, 34, 26, 12, 13, 28]);
+    const nT = filas.length + 1;
+
+    // --- Por persona
+    const porPersona = new Map();
+    filas.forEach(a => {
+      const id = String(a.personId);
+      if (!porPersona.has(id)) porPersona.set(id, { id, nombre: nombreDe(a), cargo: cargoDe(a), pob: 0, met: 0, ok: 0, tarde: 0 });
+      const x = porPersona.get(id);
+      if (a.rutina === 'Matinal Poblaciones') x.pob++; else x.met++;
+      if (a.status === 'late') x.tarde++; else x.ok++;
+    });
+    wsP.addRow(['Cédula', 'Nombre', 'Cargo', 'Asistencias', 'Matinal Poblaciones', 'Matinal Metro', 'A tiempo', 'Tarde']);
+    [...porPersona.values()].sort((a, b) => (b.pob + b.met) - (a.pob + a.met) || a.nombre.localeCompare(b.nombre, 'es')).forEach(x => {
+      const r = wsP.addRow([x.id, x.nombre, x.cargo, null, null, null, null, null]);
+      const n = r.number;
+      const cnt = (extra) => `COUNTIFS(Detalle!$D$2:$D$${nT},$A${n}${extra})`;
+      r.getCell(4).value = { formula: cnt(''), result: x.pob + x.met };
+      r.getCell(5).value = { formula: cnt(',Detalle!$C$2:$C$' + nT + ',"Poblaciones"'), result: x.pob };
+      r.getCell(6).value = { formula: cnt(',Detalle!$C$2:$C$' + nT + ',"Metro"'), result: x.met };
+      r.getCell(7).value = { formula: cnt(',Detalle!$H$2:$H$' + nT + ',"A tiempo"'), result: x.ok };
+      r.getCell(8).value = { formula: cnt(',Detalle!$H$2:$H$' + nT + ',"Tarde"'), result: x.tarde };
+      [4, 5, 6, 7, 8].forEach(c => { r.getCell(c).alignment = { horizontal: 'center' }; });
+    });
+    estilo(wsP, [14, 34, 26, 13, 20, 16, 12, 10]);
+
+    // --- Por día
+    const porDia = new Map();
+    filas.forEach(a => {
+      if (!porDia.has(a.fecha)) porDia.set(a.fecha, { pob: 0, met: 0, personas: new Set() });
+      const x = porDia.get(a.fecha);
+      if (a.rutina === 'Matinal Poblaciones') x.pob++; else x.met++;
+      x.personas.add(String(a.personId));
+    });
+    wsD.addRow(['Fecha', 'Día', 'Matinal Poblaciones', 'Matinal Metro', 'Total asistencias', 'Personas distintas']);
+    [...porDia.keys()].sort().forEach(f => {
+      const x = porDia.get(f);
+      const r = wsD.addRow([aFecha(f), dia(f), null, null, null, x.personas.size]);
+      const n = r.number;
+      r.getCell(1).numFmt = 'dd/mm/yyyy';
+      r.getCell(3).value = { formula: `COUNTIFS(Detalle!$A$2:$A$${nT},$A${n},Detalle!$C$2:$C$${nT},"Poblaciones")`, result: x.pob };
+      r.getCell(4).value = { formula: `COUNTIFS(Detalle!$A$2:$A$${nT},$A${n},Detalle!$C$2:$C$${nT},"Metro")`, result: x.met };
+      r.getCell(5).value = { formula: `C${n}+D${n}`, result: x.pob + x.met };
+      [3, 4, 5, 6].forEach(c => { r.getCell(c).alignment = { horizontal: 'center' }; });
+    });
+    estilo(wsD, [12, 14, 20, 16, 17, 18]);
+
+    // --- Léeme
+    const wsL = wb.addWorksheet('Léeme');
+    wsL.addRow(['Asistencia a Matinales UC']).font = { bold: true, size: 14 };
+    [
+      `CD: ${selectedCD}`,
+      `Rango: ${desde} a ${hasta}`,
+      `Generado: ${new Date().toLocaleString('es-CO')}`,
+      '',
+      'Qué incluye: cada marca escaneada en Matinal Poblaciones o Matinal Metro. No se cruza con la asignación NOMINAS (cuenta todo lo escaneado).',
+      'Por persona: cuántas veces asistió (total, por matinal, a tiempo y tarde).',
+      'Por día: marcas de cada matinal y personas distintas ese día.',
+      'Detalle: una fila por marca, con hora y líder que cargó.',
+      'Una persona que marcó en las dos matinales el mismo día cuenta una vez en cada una.',
+    ].forEach(t => wsL.addRow([t]));
+    wsL.getColumn(1).width = 110;
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `matinales_UC_${selectedCD}_${desde}_a_${hasta}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { marcas: filas.length, personas: porPersona.size, dias: porDia.size };
+  }
+
+  (function setupExcelMatinales(){
+    const d = document.getElementById('xlMatDesde'), h = document.getElementById('xlMatHasta');
+    const btn = document.getElementById('btnXlMatinales'), msg = document.getElementById('xlMatMsg');
+    if (!d || !h || !btn) return;
+    const hoy = hoyBogota();
+    const [Y, M] = hoy.split('-').map(Number);
+    const mesAnt = M === 1 ? `${Y - 1}-12` : `${Y}-${String(M - 1).padStart(2, '0')}`;
+    d.value = mesAnt + '-01'; // por defecto: desde el 1.º del mes anterior
+    h.value = hoy;
+    btn.addEventListener('click', async () => {
+      if (!d.value || !h.value || d.value > h.value){ msg.style.color = 'var(--bad)'; msg.textContent = 'Revisa las fechas.'; return; }
+      btn.disabled = true; msg.style.color = 'var(--text-faint)'; msg.textContent = 'Generando…';
+      try {
+        const r = await descargarExcelMatinalesUC(d.value, h.value);
+        msg.style.color = 'var(--ok)'; msg.textContent = `✓ ${r.marcas} marcas · ${r.personas} personas · ${r.dias} días`;
+      } catch (e){
+        msg.style.color = 'var(--bad)'; msg.textContent = e.message || 'No se pudo generar el Excel.';
+      } finally { btn.disabled = false; }
+    });
+  })();
 
   function agregarUsoPorFechas(pred){
     const lideres = new Map();

@@ -861,6 +861,17 @@
   .cal-dow{font-size:11px; font-weight:700; color:var(--text-faint); text-align:center; padding:4px 0; text-transform:uppercase; letter-spacing:.04em;}
   .cal-cell{min-height:86px; border:1.5px solid var(--border); border-radius:12px; padding:6px 8px; background:var(--surface); display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--text-dim); text-align:left; cursor:default; transition:border-color .15s, transform .1s;}
   .cal-cell.vacio{background:transparent; border-color:transparent;}
+  .cal-cell.uso{background:color-mix(in srgb, #1f5fd6 calc(10% + var(--t,0) * 45%), var(--surface));}
+  :root[data-theme="dark"] .cal-cell.uso{background:color-mix(in srgb, #3b78e0 calc(14% + var(--t,0) * 36%), var(--surface)); border-color:color-mix(in srgb, #3b78e0 calc(20% + var(--t,0) * 25%), var(--border));}
+  .seg{position:relative; display:inline-grid; grid-auto-flow:column; grid-auto-columns:1fr; padding:3px; border-radius:11px; background:var(--surface-3); isolation:isolate;}
+  .seg::before{content:''; position:absolute; z-index:-1; top:3px; bottom:3px; left:3px; width:calc((100% - 6px) / var(--n,3)); border-radius:8px; background:var(--surface); box-shadow:0 1px 3px rgba(10,25,60,.18), 0 0 0 .5px rgba(10,25,60,.06); transform:translateX(calc(var(--i,0) * 100%)); transition:transform .28s cubic-bezier(.32,.72,0,1);}
+  :root[data-theme="dark"] .seg::before{background:#2a4573; box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  .seg button{background:none; border:0; padding:6px 18px; min-width:64px; font-size:12.5px; font-weight:600; color:var(--text-dim); cursor:pointer; border-radius:8px; letter-spacing:-.01em; transition:color .2s;}
+  .seg button.on{color:var(--text);}
+  .seg button:active{opacity:.7;}
+  .cal-filtros{display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap;}
+  .cal-filtros span{font-size:12px; color:var(--text-faint);}
+  @media (prefers-reduced-motion:reduce){.seg::before{transition:none;}}
   .cal-cell.uso{cursor:pointer; color:var(--text);}
   .cal-cell.uso:hover{border-color:#1f5fd6;}
   .cal-cell.uso:active{transform:scale(0.98);}
@@ -6181,7 +6192,7 @@
   }
 
   // ================= Calendario de uso + análisis de líderes =================
-  const CAL = { mes: null, dia: null, vista: 'dia' };
+  const CAL = { mes: null, dia: null, vista: 'dia', grupo: 'Todos' };
 
   function grupoDeRutina(r){
     if (RUTINAS_POR_GRUPO.UC.includes(r)) return 'UC';
@@ -6208,7 +6219,7 @@
       const prim = arr.find(x => !esEntren(x)) || arr[0];
       const conEntren = arr.some(x => x !== prim && esEntren(x)) || (!esEntren(prim) && !!prim.entrenamiento);
       return { ...prim, conEntrenamiento: conEntren };
-    });
+    }).filter(a => CAL.grupo === 'Todos' || grupoDeRutina(a.rutina) === CAL.grupo);
   }
 
 
@@ -6383,6 +6394,7 @@
       if (a.cargadoPor && a.cargadoPor !== 'Registro manual') d.lideres.add(a.cargadoPor); else if (!a.cargadoPor) d.sinLider++;
     });
     const maxMarcas = Math.max(1, ...[...porDia.values()].map(d => d.marcas));
+    const minMarcas = porDia.size ? Math.min(...[...porDia.values()].map(d => d.marcas)) : 0;
     if (!CAL.dia || !CAL.dia.startsWith(CAL.mes)){
       const conUso = [...porDia.keys()].sort();
       CAL.dia = conUso.length ? conUso[conUso.length - 1] : null;
@@ -6402,11 +6414,11 @@
       const esHoy = f === hoy;
       const base = `cal-cell${esHoy ? ' hoy' : ''}${CAL.dia === f ? ' sel' : ''}`;
       if (info){
-        const alpha = (0.10 + 0.45 * (info.marcas / maxMarcas)).toFixed(2);
+        const tInt = (maxMarcas > minMarcas ? (info.marcas - minMarcas) / (maxMarcas - minMarcas) : 1).toFixed(2);
         const lid = info.lideres.size ? `${info.lideres.size} líder${info.lideres.size === 1 ? '' : 'es'}` : 'sin líder reg.';
-        celdas.push(`<button class="${base} uso" data-f="${f}" style="background:rgba(31,95,214,${alpha});">
+        celdas.push(`<button class="${base} uso" data-f="${f}" style="--t:${tInt};">
           <span class="cal-n">${d}</span><span class="cal-big">${info.marcas}</span>
-          <span class="cal-tag">UC ${info.uc} · OL ${info.ol}</span><span class="cal-tag">${lid}</span>
+          <span class="cal-tag">${CAL.grupo === 'UC' ? 'UC ' + info.uc : CAL.grupo === 'OL' ? 'OL ' + info.ol : 'UC ' + info.uc + ' · OL ' + info.ol}</span><span class="cal-tag">${lid}</span>
           ${etiquetaNoLaboral(f) ? `<span class="cal-tag" style="color:#9a7410;">${etiquetaNoLaboral(f)}</span>` : ''}</button>`);
       } else if (esDiaLaboral(f) && f <= hoy){
         celdas.push(`<div class="${base} sinuso"><span class="cal-n">${d}</span><span class="cal-tag" style="color:#c0392b;">Sin uso</span></div>`);
@@ -6440,7 +6452,13 @@
         <div class="cal-mes">${mesTxt}</div>
         <div class="cal-nav"><button data-nav="-1">‹ Mes anterior</button> <button data-nav="0">Hoy</button> <button data-nav="1">Mes siguiente ›</button></div>
       </div>
-      <p class="hint-note" style="margin:0 0 10px;">Días laborables con uso: <b>${laboralesConUso} de ${laboralesTranscurridos}</b> transcurridos este mes. Cuanto más azul, más marcas cargadas ese día.</p>
+      <div class="cal-filtros">
+        <div class="seg" role="tablist" aria-label="Filtrar por grupo" style="--n:3; --i:${['Todos','UC','OL'].indexOf(CAL.grupo)};">
+          ${['Todos', 'UC', 'OL'].map(g => `<button role="tab" data-grupo="${g}" aria-selected="${CAL.grupo === g}" class="${CAL.grupo === g ? 'on' : ''}">${g}</button>`).join('')}
+        </div>
+        <span>${CAL.grupo === 'Todos' ? 'Viendo todas las rutinas' : 'Solo rutinas ' + CAL.grupo}</span>
+      </div>
+      <p class="hint-note" style="margin:0 0 10px;">Días laborables con uso: <b>${laboralesConUso} de ${laboralesTranscurridos}</b> transcurridos este mes. Cuanto más intenso el azul, más marcas ese día (se compara dentro del filtro elegido).</p>
       <div class="cal-grid">
         ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(x => `<div class="cal-dow">${x}</div>`).join('')}
         ${celdas.join('')}
@@ -6463,8 +6481,8 @@
         <div class="cal-cards">
           <div class="cal-card"><b>${ag.registros}</b><span>Registros (marcas)</span></div>
           <div class="cal-card"><b>${ag.personas}</b><span>Personas únicas</span></div>
-          <div class="cal-card"><b style="color:#1f5fd6;">${ag.uc}</b><span>Marcas UC</span></div>
-          <div class="cal-card"><b style="color:#b8860b;">${ag.ol}</b><span>Marcas OL</span></div>
+          ${CAL.grupo !== 'OL' ? `<div class="cal-card"><b style="color:#1f5fd6;">${ag.uc}</b><span>Marcas UC</span></div>` : ''}
+          ${CAL.grupo !== 'UC' ? `<div class="cal-card"><b style="color:#b8860b;">${ag.ol}</b><span>Marcas OL</span></div>` : ''}
           ${ag.otras ? `<div class="cal-card"><b>${ag.otras}</b><span>Otras rutinas</span></div>` : ''}
           <div class="cal-card"><b>${lidReales}</b><span>Líderes que cargaron</span></div>
         </div>
@@ -6491,6 +6509,13 @@
       renderCalendarioUso();
     }));
     host.querySelectorAll('.cal-cell.uso').forEach(c => c.addEventListener('click', () => { CAL.dia = c.dataset.f; CAL.vista = 'dia'; renderCalendarioUso(); }));
+    host.querySelectorAll('[data-grupo]').forEach(b => b.addEventListener('click', () => {
+      if (CAL.grupo === b.dataset.grupo) return;
+      const seg = b.closest('.seg');
+      seg.style.setProperty('--i', ['Todos', 'UC', 'OL'].indexOf(b.dataset.grupo));
+      CAL.grupo = b.dataset.grupo; CAL.dia = null;
+      setTimeout(renderCalendarioUso, 180);
+    }));
     host.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click', () => { CAL.vista = b.dataset.vista; renderCalendarioUso(); }));
     const csv = document.getElementById('btnCalCsv');
     if (csv) csv.addEventListener('click', () => {

@@ -1403,7 +1403,23 @@
           </button>
         </div>
       </div>
-      <p class="hint-note">Los cambios aquí son de este prototipo (se pierden al recargar). En la versión conectada a Firebase, cada edición queda guardada de inmediato para todos.</p>
+      <div class="descanso-card" id="cardDepura">
+        <div class="descanso-card-head"><div>
+          <div class="descanso-card-title">Depurar activos y retirados</div>
+          <div class="descanso-card-sub">Sube el Excel <b>Usuarios Activos</b> (el listado de quienes siguen activados). Comparo por <b>cédula</b> contra todos los colaboradores de este CD, incluidos los que agregaste a mano, y te muestro quién queda inactivo antes de guardar nada. Opcional: sube también el Excel <b>Gestión de Asistencia</b> para tomar de ahí la fecha y el motivo del retiro. No cambia cédulas ni QR.</div>
+        </div></div>
+        <div class="descanso-card-row">
+          <input type="file" id="dpActivos" accept=".xlsx,.xls" style="display:none;">
+          <input type="file" id="dpGestion" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-secondary" id="dpBtnActivos" style="flex:none;">1. Usuarios Activos</button>
+          <span id="dpNomActivos" style="font-size:12px; color:var(--text-faint);">ningún archivo</span>
+          <button class="btn-secondary" id="dpBtnGestion" style="flex:none;">2. Gestión de Asistencia (opcional)</button>
+          <span id="dpNomGestion" style="font-size:12px; color:var(--text-faint);">ningún archivo</span>
+          <button class="btn-add" id="dpAnalizar" style="flex:none;" disabled>Analizar</button>
+        </div>
+        <div id="dpPreview"></div>
+      </div>
+      <p class="hint-note">Cada edición queda guardada de inmediato para todos. Los inactivos dejan de contar en las metas y en los totales, y su QR deja de funcionar; la cédula y el QR no cambian.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -2376,8 +2392,9 @@
   // siempre) para no dejar la meta en 0 antes de la primera carga.
   function metaEntrenamientoUC(cd, fecha){
     const v = asignacionVigenteEnFecha(cd, fecha);
-    if (!v) return PEOPLE.filter(p => p.cd === cd && p.grupo === 'UC').length;
-    return new Set(v.personas.map(p => p.personId)).size;
+    if (!v) return PEOPLE.filter(p => p.cd === cd && p.grupo === 'UC' && activoEnFecha(p, fecha)).length;
+    const porId = new Map(PEOPLE.filter(p => p.cd === cd).map(p => [p.id, p]));
+    return new Set(v.personas.map(p => p.personId).filter(id => { const q = porId.get(id); return !q || activoEnFecha(q, fecha); })).size;
   }
 
   // Personas "designadas" a Matinal Poblaciones / Matinal Metro para (cd, fecha):
@@ -2396,7 +2413,7 @@
       if (vistos.has(a.personId)) return; // una persona puede aparecer 2 veces si quedó mal cargada; no duplicar
       vistos.add(a.personId);
       const p = peopleById.get(a.personId);
-      if (p) out.push(p);
+      if (p && activoEnFecha(p, fecha)) out.push(p);
     });
     return out;
   }
@@ -2938,8 +2955,15 @@
     return ((parts[0]||'')[0] + (parts[1]||'')[0]).toUpperCase();
   }
 
+  // ¿Cuenta la persona como activa en esa fecha? Inactiva con fecha de baja: sigue
+  // contando hasta el día anterior a la baja (así las fechas pasadas no cambian).
+  function activoEnFecha(p, fecha){
+    if (!p) return false;
+    if (p.activo !== false) return true;
+    return !!(p.fechaBaja && fecha && fecha < p.fechaBaja);
+  }
   function peopleInCD(){
-    return PEOPLE.filter(p => p.cd === selectedCD);
+    return PEOPLE.filter(p => p.cd === selectedCD && p.activo !== false);
   }
 
   const GRUPO_ADH = [
@@ -6223,6 +6247,168 @@
   }
 
 
+
+  // ================= Depurar activos y retirados =================
+  // Compara el Excel "Usuarios Activos" (quienes siguen activados) contra los
+  // colaboradores del CD y deja inactivos a quienes ya no aparecen. Solo cambia
+  // activo/fechaBaja/motivoBaja (nunca la cédula, así el QR no cambia) y los saca
+  // de las asignaciones NOMINAS desde su fecha de baja (aplicarCambiosAsignacion).
+  const DEPURA = { activos: null, gestion: null, plan: null };
+
+  function leerLibro(file){
+    return file.arrayBuffer().then(buf => XLSX.read(buf, { type: 'array' }));
+  }
+  function filasDeLibro(wb, tieneColumna){
+    for (const n of wb.SheetNames){
+      const filas = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null });
+      for (let i = 0; i < Math.min(filas.length, 10); i++){
+        const hs = (filas[i] || []).map(c => normTxt(c));
+        if (hs.includes(tieneColumna)) return { filas, idx: i, hs };
+      }
+    }
+    return null;
+  }
+  const cdDeGrupo = (g) => { const t = normTxt(g); return t.includes('villavicencio') ? 'Villavicencio' : t.includes('yopal') ? 'Yopal' : ''; };
+
+  async function analizarDepuracion(fActivos, fGestion){
+    if (typeof XLSX === 'undefined') throw new Error('No se pudo cargar el lector de Excel (sin conexión al CDN).');
+    const wa = await leerLibro(fActivos);
+    const ra = filasDeLibro(wa, 'identificador');
+    if (!ra) throw new Error('En "Usuarios Activos" no encontré la columna "Identificador".');
+    const iId = ra.hs.indexOf('identificador'), iGr = ra.hs.indexOf('grupo'), iEs = ra.hs.indexOf('estado');
+    const enArchivo = new Map(); // cédula -> {grupo, cd}
+    for (let i = ra.idx + 1; i < ra.filas.length; i++){
+      const f = ra.filas[i]; if (!f) continue;
+      const ced = normalizarCedulaExcel(f[iId]); if (!ced) continue;
+      if (iEs !== -1 && f[iEs] && normTxt(f[iEs]) !== 'activado') continue; // solo los activados cuentan como activos
+      enArchivo.set(ced, { grupo: String(f[iGr] || '').trim(), cd: cdDeGrupo(f[iGr]) });
+    }
+    if (!enArchivo.size) throw new Error('El archivo no trae ninguna persona activada.');
+
+    // Retiros (opcional): primera fecha con permiso "Retiro…" por cédula
+    const retiros = new Map();
+    let conGestion = false;
+    if (fGestion){
+      const wg = await leerLibro(fGestion);
+      const rg = filasDeLibro(wg, 'permiso');
+      if (!rg) throw new Error('En "Gestión de Asistencia" no encontré la columna "Permiso".');
+      const iI = rg.hs.indexOf('identificador'), iF = rg.hs.indexOf('fecha'), iP = rg.hs.indexOf('permiso');
+      for (let i = rg.idx + 1; i < rg.filas.length; i++){
+        const f = rg.filas[i]; if (!f) continue;
+        const perm = String(f[iP] || '');
+        if (!normTxt(perm).startsWith('retiro')) continue;
+        const m = String(f[iF] || '').match(/(\d{2})-(\d{2})-(\d{4})/); if (!m) continue;
+        const iso = `${m[3]}-${m[2]}-${m[1]}`;
+        const ced = normalizarCedulaExcel(f[iI]);
+        const prev = retiros.get(ced);
+        if (!prev || iso < prev.fecha) retiros.set(ced, { fecha: iso, motivo: perm.trim() });
+      }
+      conGestion = true;
+    }
+
+    const hoy = hoyBogota();
+    const reciente = sumarDiasISO(hoy, -20);
+    const delCD = PEOPLE.filter(p => p.cd === selectedCD);
+    const activosApp = delCD.filter(p => p.activo !== false);
+    const bajas = [], quedan = [], otroCD = [];
+    activosApp.forEach(p => {
+      const e = enArchivo.get(p.id);
+      if (e){ quedan.push(p); if (e.cd && e.cd !== selectedCD) otroCD.push({ p, grupo: e.grupo }); return; }
+      const r = retiros.get(p.id);
+      bajas.push({ p, fecha: r ? r.fecha : hoy, motivo: r ? r.motivo : 'No figura en Usuarios Activos', conFecha: !!r,
+        reciente: !!(p.altaEn && p.altaEn >= reciente) });
+    });
+    bajas.sort((a, b) => (a.p.nombre || '').localeCompare(b.p.nombre || '', 'es'));
+    // Activos en el archivo (de este CD) que no están en la app
+    const idsApp = new Set(delCD.map(p => p.id));
+    const nuevos = [];
+    ra.filas.slice(ra.idx + 1).forEach(f => {
+      if (!f) return;
+      const ced = normalizarCedulaExcel(f[iId]); const e = enArchivo.get(ced);
+      if (!e || e.cd !== selectedCD || idsApp.has(ced)) return;
+      const ix = (k) => ra.hs.indexOf(k);
+      nuevos.push({ cedula: ced, nombre: `${f[ix('nombre')] || ''} ${f[ix('apellidos')] || ''}`.trim(), cargo: String(f[ix('cargo')] || '').trim(), grupo: e.grupo });
+    });
+    const inactivosYaEnApp = delCD.length - activosApp.length;
+    return { bajas, quedan: quedan.length, otroCD, nuevos, totalApp: activosApp.length, totalArchivoCD: [...enArchivo.values()].filter(e => e.cd === selectedCD).length, inactivosYaEnApp, conGestion, sinFechaN: bajas.filter(b => !b.conFecha).length };
+  }
+
+  async function aplicarDepuracion(sel){
+    const quien = (currentUser && currentUser.name) || '';
+    const ahora = new Date().toISOString();
+    const cambios = [];
+    for (let i = 0; i < sel.length; i += 20){
+      await Promise.all(sel.slice(i, i + 20).map(b => updateDoc(doc(colColaboradores, b.p.id), {
+        activo: false, fechaBaja: b.fecha, motivoBaja: b.motivo, bajaPor: quien, depuradoEn: ahora,
+      })));
+    }
+    sel.forEach(b => cambios.push({ op: 'remove', desde: b.fecha, id: b.p.id }));
+    if (cambios.length) await aplicarCambiosAsignacion(cambios);
+  }
+
+  function descargarNuevosDepura(nuevos){
+    const esUC = (c) => /reparto|conductor/i.test(c) && !/^ol /i.test(c);
+    const wb = XLSX.utils.book_new();
+    const hoy = hoyBogota();
+    const ws = XLSX.utils.aoa_to_sheet([['Tipo', 'Cédula', 'Nombre', 'Cargo', 'Grupo', 'Zona', 'Fecha', 'Fecha fin', 'Justificada', 'Motivo'],
+      ...nuevos.map(n => ['ALTA', n.cedula, n.nombre, n.cargo, /^ol /i.test(n.grupo) || /^ol /i.test(n.cargo) ? 'OL' : (esUC(n.cargo) ? 'UC' : ''), '', hoy, '', '', ''])]);
+    ws['!cols'] = [10, 14, 34, 26, 8, 12, 12, 12, 12, 20].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
+    XLSX.writeFile(wb, `nuevos_sin_registrar_${selectedCD}.xlsx`);
+  }
+
+  (function setupDepura(){
+    const fa = document.getElementById('dpActivos'), fg = document.getElementById('dpGestion');
+    const bA = document.getElementById('dpBtnActivos'), bG = document.getElementById('dpBtnGestion');
+    const nA = document.getElementById('dpNomActivos'), nG = document.getElementById('dpNomGestion');
+    const go = document.getElementById('dpAnalizar'), box = document.getElementById('dpPreview');
+    if (!fa || !go) return;
+    bA.addEventListener('click', () => fa.click());
+    bG.addEventListener('click', () => fg.click());
+    fa.addEventListener('change', () => { DEPURA.activos = fa.files[0] || null; nA.textContent = DEPURA.activos ? DEPURA.activos.name : 'ningún archivo'; go.disabled = !DEPURA.activos; });
+    fg.addEventListener('change', () => { DEPURA.gestion = fg.files[0] || null; nG.textContent = DEPURA.gestion ? DEPURA.gestion.name : 'ningún archivo'; });
+    go.addEventListener('click', async () => {
+      box.innerHTML = '<div class="descanso-preview-box">Analizando… (el archivo de asistencia es grande, puede tardar unos segundos)</div>';
+      go.disabled = true;
+      try {
+        const r = await analizarDepuracion(DEPURA.activos, DEPURA.gestion);
+        DEPURA.plan = r;
+        const fila = (b, i) => `<label class="descanso-preview-item" style="align-items:center;">
+            <span style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-dp="${i}" ${b.reciente ? '' : 'checked'}>
+              <span>${escH(b.p.nombre || '')} <span style="color:var(--text-faint);">· ${escH(b.p.id)} · ${escH(b.p.cargo || '')}</span>${b.reciente ? ' <span style="color:var(--gold-ink);">· alta reciente</span>' : ''}</span></span>
+            <span>${b.fecha}${b.conFecha ? '' : ' (hoy)'} · ${escH(b.motivo)}</span></label>`;
+        box.innerHTML = `<div class="descanso-preview-box">
+          <div class="descanso-preview-title">${selectedCD}: ${r.totalApp} activos en la app · ${r.totalArchivoCD} en el archivo · se mantienen ${r.quedan} · <span style="color:var(--bad);">pasarían a inactivos ${r.bajas.length}</span></div>
+          ${r.inactivosYaEnApp ? `<div class="hint-note" style="margin:0 0 8px;">${r.inactivosYaEnApp} ya estaban inactivos en la app: no se tocan.</div>` : ''}
+          ${r.conGestion ? '' : `<div class="descanso-preview-warn">No subiste Gestión de Asistencia: la fecha de baja será hoy (${hoyBogota()}). Si prefieres la fecha real de retiro, súbela y analiza de nuevo.</div>`}
+          ${r.conGestion && r.sinFechaN ? `<div class="descanso-preview-warn">${r.sinFechaN} persona(s) no tienen retiro registrado en Gestión de Asistencia (quizá se fueron antes del periodo): quedan con fecha de hoy.</div>` : ''}
+          ${r.otroCD.length ? `<div class="descanso-preview-warn">${r.otroCD.length} persona(s) de este CD aparecen activas en otro grupo del archivo (${[...new Set(r.otroCD.map(x => x.grupo))].join(', ')}): se mantienen activas.</div>` : ''}
+          <div class="descanso-preview-list" style="max-height:320px;">${r.bajas.length ? r.bajas.map(fila).join('') : '<div class="empty-state" style="padding:14px 8px;">Todos los activos de la app figuran activados en el archivo. No hay nada que dar de baja.</div>'}</div>
+          ${r.nuevos.length ? `<div class="hint-note" style="margin:0 0 10px;"><b>${r.nuevos.length}</b> persona(s) activadas en el archivo (grupos de ${selectedCD}) no están registradas en la app. No las agrego solas porque no sé su grupo UC/OL. <a href="#" id="dpNuevosDl">Descargar lista en formato de novedades (ALTA)</a> para cargarla desde People.</div>` : ''}
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            ${r.bajas.length ? `<button class="btn-add" id="dpAplicar" style="flex:none;">Dar de baja a los seleccionados</button>` : ''}
+            <span id="dpMsg" style="font-size:12px; color:var(--text-faint);">Las "alta reciente" (últimos 20 días) vienen sin marcar por precaución.</span>
+          </div></div>`;
+        const dl = document.getElementById('dpNuevosDl');
+        if (dl) dl.addEventListener('click', (e) => { e.preventDefault(); descargarNuevosDepura(r.nuevos); });
+        const ap = document.getElementById('dpAplicar');
+        if (ap) ap.addEventListener('click', async () => {
+          const sel = [...box.querySelectorAll('input[data-dp]:checked')].map(c => r.bajas[+c.dataset.dp]);
+          const msg = document.getElementById('dpMsg');
+          if (!sel.length){ msg.style.color = 'var(--bad)'; msg.textContent = 'No hay nadie seleccionado.'; return; }
+          if (!confirm(`Vas a dejar inactivas a ${sel.length} persona(s) en ${selectedCD}. Dejan de contar en metas y totales (se pueden reactivar). ¿Continuar?`)) return;
+          ap.disabled = true; msg.style.color = 'var(--text-faint)'; msg.textContent = 'Guardando…';
+          try {
+            await aplicarDepuracion(sel);
+            box.innerHTML = `<div class="descanso-preview-box">✓ ${sel.length} persona(s) quedaron inactivas y salieron de las asignaciones NOMINAS desde su fecha de baja. Las cédulas y los QR de los activos no cambiaron.</div>`;
+          } catch (e){ ap.disabled = false; msg.style.color = 'var(--bad)'; msg.textContent = 'No se pudo guardar: ' + (e.message || e); }
+        });
+      } catch (e){
+        box.innerHTML = `<div class="descanso-preview-box" style="color:var(--bad);">${escH(e.message || 'No se pudo analizar.')}</div>`;
+      } finally { go.disabled = !DEPURA.activos; }
+    });
+  })();
+
   // ---------- Excel simple: asistentes a Matinales UC (sin considerar asignaciones) ----------
   async function descargarExcelMatinalesUC(desde, hasta){
     if (typeof ExcelJS === 'undefined') throw new Error('No se pudo cargar el generador de Excel (sin conexión al CDN).');
@@ -7446,7 +7632,8 @@
   // es el DENOMINADOR que se muestra (ver designadosParaVistaRutina) y qué se
   // guarda como "designados" de la sesión (ver logDesignations).
   function personsForLeaderRutina(rutina, cd){
-    return PEOPLE.filter(p => p.cd === cd && rutinasDeColaborador(p).includes(rutina));
+    const hoyB = hoyBogota();
+    return PEOPLE.filter(p => p.cd === cd && activoEnFecha(p, hoyB) && rutinasDeColaborador(p).includes(rutina));
   }
 
   // Para pantallas/conteos (denominador de "ya registrados hoy", designados
